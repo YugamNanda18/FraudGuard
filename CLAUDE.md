@@ -9,7 +9,7 @@ FraudAI Agent: Level 3 agentic AI platform for banking fraud detection and AI re
 - API (FastAPI) + Web chat (Next.js)
 
 ## Stack
-- Python 3.11+, LangGraph, LangChain, ChromaDB
+- Python 3.11+, LangGraph, LangChain, Qdrant
 - LLM: Anthropic Claude API (complex agents) + local model (routing/simple queries)
 - No GPT/Gemini/external models
 

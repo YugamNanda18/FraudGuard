@@ -343,7 +343,7 @@ Como usuario, quiero poder valorar las respuestas de los agentes (util/no util) 
 - **Ingestion:** Descarga semanal via API BOE → extracción texto → NLP cleanup → chunking → embeddings → vector DB
 - **Chunking strategy:** Por artículo/sección legal (no fixed-size) para mantener coherencia semántica
 - **Embedding model:** Modelo multilingüe con buen rendimiento en español legal (e.g., multilingual-e5-large, BGE-M3)
-- **Vector DB:** ChromaDB (MVP) → Weaviate/Qdrant (producción)
+- **Vector DB:** Qdrant (MVP y producción) — hybrid search nativo, tenant isolation (ver ADR-002)
 - **Retrieval:** Hybrid search (dense + sparse/BM25) con reranking
 - **Top-k:** Configurable por agente (default k=10, Louis puede usar k=20 para citas exhaustivas)
 

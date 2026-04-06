@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1580" height="880" viewBox="10 -10 1580 880">
+<defs><marker id="arrow-1971c2" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#1971c2" /></marker><marker id="arrow-c2255c" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#c2255c" /></marker><marker id="arrow-c92a2a" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#c92a2a" /></marker><marker id="arrow-2f9e44" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#2f9e44" /></marker><marker id="arrow-e67700" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#e67700" /></marker><style>text { font-family: "Segoe UI", system-ui, -apple-system, sans-serif; }</style></defs>
+<text x="500" y="42" font-size="32" fill="#1b1b1f">FraudAI Agent — System Architecture</text>
+<rect x="30" y="60" width="1540" height="130" rx="8" stroke="#1971c2" fill="#d0ebff" stroke-width="2" />
+<text x="50" y="84" font-size="14" fill="#1971c2">USER LAYER</text>
+<rect x="30" y="210" width="1540" height="250" rx="8" stroke="#6741d9" fill="#e5dbff" stroke-width="2" />
+<text x="50" y="234" font-size="14" fill="#6741d9">ORCHESTRATION &amp; AGENTS LAYER (LangGraph)</text>
+<rect x="30" y="480" width="740" height="220" rx="8" stroke="#c92a2a" fill="#ffe3e3" stroke-width="2" />
+<text x="50" y="504" font-size="14" fill="#c92a2a">TOOLS / EXECUTION LAYER</text>
+<rect x="790" y="480" width="780" height="220" rx="8" stroke="#2f9e44" fill="#d3f9d8" stroke-width="2" />
+<text x="810" y="504" font-size="14" fill="#2f9e44">DATA LAYER</text>
+<rect x="30" y="720" width="1540" height="130" rx="8" stroke="#e67700" fill="#fff4e6" stroke-width="2" />
+<text x="50" y="744" font-size="14" fill="#e67700">EXTERNAL SERVICES</text>
+<rect x="350" y="90" width="220" height="70" rx="8" stroke="#1971c2" fill="#d0ebff" stroke-width="2" />
+<text x="460" y="125" font-size="14" fill="#1971c2" text-anchor="middle" dominant-baseline="central">Web Chat
+(Next.js + React)</text>
+<rect x="1000" y="90" width="220" height="70" rx="8" stroke="#1971c2" fill="#d0ebff" stroke-width="2" />
+<text x="1110" y="125" font-size="14" fill="#1971c2" text-anchor="middle" dominant-baseline="central">API REST
+(FastAPI)</text>
+<polygon points="800,240 920,290 800,340 680,290" stroke="#c2255c" fill="#ffdeeb" stroke-width="2" />
+<text x="800" y="290" font-size="14" fill="#c2255c" text-anchor="middle" dominant-baseline="central">Donna Paulsen
+(Router Agent)</text>
+<rect x="50" y="370" width="200" height="70" rx="8" stroke="#c92a2a" fill="#ffe3e3" stroke-width="2" />
+<text x="150" y="405" font-size="14" fill="#c92a2a" text-anchor="middle" dominant-baseline="central">Harvey Specter
+Transaction Fraud</text>
+<rect x="290" y="370" width="200" height="70" rx="8" stroke="#1971c2" fill="#d0ebff" stroke-width="2" />
+<text x="390" y="405" font-size="14" fill="#1971c2" text-anchor="middle" dominant-baseline="central">Louis Litt
+AML/KYC/Compliance</text>
+<rect x="540" y="370" width="210" height="70" rx="8" stroke="#6741d9" fill="#e5dbff" stroke-width="2" />
+<text x="645" y="405" font-size="14" fill="#6741d9" text-anchor="middle" dominant-baseline="central">Jessica Pearson
+Fraud Intelligence</text>
+<rect x="800" y="370" width="200" height="70" rx="8" stroke="#e67700" fill="#fff4e6" stroke-width="2" />
+<text x="900" y="405" font-size="14" fill="#e67700" text-anchor="middle" dominant-baseline="central">Mike Ross
+AI Red Teaming</text>
+<rect x="1050" y="370" width="200" height="70" rx="8" stroke="#2f9e44" fill="#d3f9d8" stroke-width="2" />
+<text x="1150" y="405" font-size="14" fill="#2f9e44" text-anchor="middle" dominant-baseline="central">Rachel Zane
+Data Engineering</text>
+<rect x="60" y="520" width="690" height="160" rx="8" stroke="#c92a2a" fill="#ffffff" stroke-width="1" />
+<text x="80" y="546" font-size="18" fill="#c92a2a">Sandbox Docker</text>
+<rect x="80" y="560" width="145" height="50" rx="8" stroke="#c92a2a" fill="#ffe3e3" stroke-width="1" />
+<text x="152.5" y="585" font-size="14" fill="#c92a2a" text-anchor="middle" dominant-baseline="central">analyze_
+transactions</text>
+<rect x="240" y="560" width="135" height="50" rx="8" stroke="#c92a2a" fill="#ffe3e3" stroke-width="1" />
+<text x="307.5" y="585" font-size="14" fill="#c92a2a" text-anchor="middle" dominant-baseline="central">graph_
+analysis</text>
+<rect x="390" y="560" width="145" height="50" rx="8" stroke="#c92a2a" fill="#ffe3e3" stroke-width="1" />
+<text x="462.5" y="585" font-size="14" fill="#c92a2a" text-anchor="middle" dominant-baseline="central">adversarial_
+evasion</text>
+<rect x="550" y="560" width="135" height="50" rx="8" stroke="#c92a2a" fill="#ffe3e3" stroke-width="1" />
+<text x="617.5" y="585" font-size="14" fill="#c92a2a" text-anchor="middle" dominant-baseline="central">code_
+executor</text>
+<rect x="80" y="625" width="145" height="50" rx="8" stroke="#c92a2a" fill="#ffe3e3" stroke-width="1" />
+<text x="152.5" y="650" font-size="14" fill="#c92a2a" text-anchor="middle" dominant-baseline="central">risk_
+scoring</text>
+<rect x="240" y="625" width="135" height="50" rx="8" stroke="#c92a2a" fill="#ffe3e3" stroke-width="1" />
+<text x="307.5" y="650" font-size="14" fill="#c92a2a" text-anchor="middle" dominant-baseline="central">compliance_
+check</text>
+<rect x="390" y="625" width="145" height="50" rx="8" stroke="#c92a2a" fill="#ffe3e3" stroke-width="1" />
+<text x="462.5" y="650" font-size="14" fill="#c92a2a" text-anchor="middle" dominant-baseline="central">pattern_
+detection</text>
+<rect x="550" y="625" width="135" height="50" rx="8" stroke="#c92a2a" fill="#ffe3e3" stroke-width="1" />
+<text x="617.5" y="650" font-size="14" fill="#c92a2a" text-anchor="middle" dominant-baseline="central">report_
+generator</text>
+<ellipse cx="930" cy="560" rx="100" ry="40" stroke="#2f9e44" fill="#d3f9d8" stroke-width="2" />
+<text x="930" y="560" font-size="14" fill="#2f9e44" text-anchor="middle" dominant-baseline="central">Vector DB
+ChromaDB/Weaviate</text>
+<rect x="1080" y="520" width="200" height="70" rx="8" stroke="#2f9e44" fill="#d3f9d8" stroke-width="2" />
+<text x="1180" y="555" font-size="14" fill="#2f9e44" text-anchor="middle" dominant-baseline="central">BOE Ingestion
+Pipeline</text>
+<rect x="830" y="620" width="200" height="60" rx="8" stroke="#2f9e44" fill="#d3f9d8" stroke-width="2" />
+<text x="930" y="650" font-size="14" fill="#2f9e44" text-anchor="middle" dominant-baseline="central">Client Context
+Store</text>
+<rect x="1080" y="620" width="200" height="60" rx="8" stroke="#2f9e44" fill="#d3f9d8" stroke-width="2" />
+<text x="1180" y="650" font-size="14" fill="#2f9e44" text-anchor="middle" dominant-baseline="central">BOE Embeddings
+(Legislacion + NLP)</text>
+<rect x="100" y="750" width="220" height="70" rx="8" stroke="#e67700" fill="#fff4e6" stroke-width="2" />
+<text x="210" y="785" font-size="14" fill="#e67700" text-anchor="middle" dominant-baseline="central">API BOE
+Legislacion Consolidada
++ Sumarios</text>
+<rect x="450" y="750" width="220" height="70" rx="8" stroke="#e67700" fill="#fff4e6" stroke-width="2" />
+<text x="560" y="785" font-size="14" fill="#e67700" text-anchor="middle" dominant-baseline="central">Anthropic Claude API
+(claude-sonnet-4-20250514)</text>
+<rect x="800" y="750" width="200" height="70" rx="8" stroke="#e67700" fill="#fff4e6" stroke-width="2" />
+<text x="900" y="785" font-size="14" fill="#e67700" text-anchor="middle" dominant-baseline="central">EUR-Lex API
+(opcional)</text>
+<rect x="1130" y="750" width="200" height="70" rx="8" stroke="#e67700" fill="#fff4e6" stroke-width="2" />
+<text x="1230" y="785" font-size="14" fill="#e67700" text-anchor="middle" dominant-baseline="central">LangSmith
+Observability</text>
+<path d="M 460 160 L 800 250" stroke="#1971c2" fill="none" stroke-width="2" marker-end="url(#arrow-1971c2)" />
+<path d="M 1110 160 L 800 250" stroke="#1971c2" fill="none" stroke-width="2" marker-end="url(#arrow-1971c2)" />
+<path d="M 740 340 L 150 375" stroke="#c2255c" fill="none" stroke-width="1" marker-end="url(#arrow-c2255c)" />
+<path d="M 770 340 L 390 375" stroke="#c2255c" fill="none" stroke-width="1" marker-end="url(#arrow-c2255c)" />
+<path d="M 800 340 L 645 375" stroke="#c2255c" fill="none" stroke-width="1" marker-end="url(#arrow-c2255c)" />
+<path d="M 830 340 L 900 375" stroke="#c2255c" fill="none" stroke-width="1" marker-end="url(#arrow-c2255c)" />
+<path d="M 860 340 L 1150 375" stroke="#c2255c" fill="none" stroke-width="1" marker-end="url(#arrow-c2255c)" />
+<path d="M 150 440 L 150 520" stroke="#c92a2a" fill="none" stroke-width="2" marker-end="url(#arrow-c92a2a)" />
+<path d="M 390 440 L 390 520" stroke="#c92a2a" fill="none" stroke-width="2" marker-end="url(#arrow-c92a2a)" />
+<path d="M 645 440 L 615 520" stroke="#c92a2a" fill="none" stroke-width="2" marker-end="url(#arrow-c92a2a)" />
+<path d="M 900 440 L 620 520" stroke="#c92a2a" fill="none" stroke-width="2" marker-end="url(#arrow-c92a2a)" />
+<path d="M 250 405 L 930 540" stroke="#2f9e44" fill="none" stroke-width="1" marker-end="url(#arrow-2f9e44)" />
+<path d="M 490 405 L 930 540" stroke="#2f9e44" fill="none" stroke-width="1" marker-end="url(#arrow-2f9e44)" />
+<path d="M 750 405 L 930 540" stroke="#2f9e44" fill="none" stroke-width="1" marker-end="url(#arrow-2f9e44)" />
+<path d="M 1000 405 L 930 540" stroke="#2f9e44" fill="none" stroke-width="1" marker-end="url(#arrow-2f9e44)" />
+<path d="M 1180 590 L 930 560" stroke="#2f9e44" fill="none" stroke-width="2" marker-end="url(#arrow-2f9e44)" />
+<path d="M 1180 620 L 930 650" stroke="#2f9e44" fill="none" stroke-width="2" marker-end="url(#arrow-2f9e44)" />
+<path d="M 210 750 L 1080 555" stroke="#2f9e44" fill="none" stroke-width="2" marker-end="url(#arrow-2f9e44)" />
+<path d="M 560 750 L 800 350" stroke="#e67700" fill="none" stroke-width="1" marker-end="url(#arrow-e67700)" />
+<rect x="1310" y="210" width="240" height="140" rx="8" stroke="#868e96" fill="#f1f3f5" stroke-width="1" />
+<text x="1325" y="234" font-size="16" fill="#1b1b1f">LEGEND</text>
+<path d="M 1325 248 L 1355 248" stroke="#1971c2" fill="none" stroke-width="3" />
+<text x="1365" y="253" font-size="13" fill="#1971c2">User query flow</text>
+<path d="M 1325 272 L 1355 272" stroke="#2f9e44" fill="none" stroke-width="3" />
+<text x="1365" y="277" font-size="13" fill="#2f9e44">Data / RAG flow</text>
+<path d="M 1325 296 L 1355 296" stroke="#c92a2a" fill="none" stroke-width="3" />
+<text x="1365" y="301" font-size="13" fill="#c92a2a">Tool execution flow</text>
+<path d="M 1325 320 L 1355 320" stroke="#c2255c" fill="none" stroke-width="3" />
+<text x="1365" y="325" font-size="13" fill="#c2255c">Routing (Donna)</text>
+<text x="480" y="197" font-size="12" fill="#1971c2">query</text>
+<text x="1020" y="197" font-size="12" fill="#1971c2">query</text>
+<text x="1090" y="502" font-size="12" fill="#2f9e44">(semanal)</text>
+<text x="135" y="466" font-size="11" fill="#c92a2a">tools</text>
+<text x="375" y="466" font-size="11" fill="#c92a2a">tools</text>
+<text x="615" y="466" font-size="11" fill="#c92a2a">tools</text>
+<text x="825" y="466" font-size="11" fill="#c92a2a">tools</text>
+<text x="480" y="471" font-size="11" fill="#2f9e44">RAG</text>
+<text x="660" y="471" font-size="11" fill="#2f9e44">RAG</text>
+<text x="870" y="471" font-size="11" fill="#2f9e44">RAG</text>
+</svg>
