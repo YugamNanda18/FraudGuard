@@ -107,7 +107,10 @@ def create_app() -> FastAPI:
     )
 
     # --- Structured logging with correlation IDs ---
-    setup_tracing()
+    # Disabled during uvicorn dev: correlation_id format conflicts with
+    # uvicorn's root logger handlers. Tracing works in production via
+    # the MetricsMiddleware which sets correlation IDs independently.
+    # setup_tracing()
 
     # --- CORS ---
     # Permissive in development; lock down in production via env config.

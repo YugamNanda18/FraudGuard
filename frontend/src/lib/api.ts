@@ -33,6 +33,7 @@ async function request<T>(
   const res = await fetch(url, {
     headers: {
       "Content-Type": "application/json",
+      Authorization: "Bearer dev-token",
       ...options.headers,
     },
     ...options,

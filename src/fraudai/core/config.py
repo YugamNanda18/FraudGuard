@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     # Ollama
     ollama_host: str = "http://localhost:11434"
     ollama_model: str = "llama3.1:8b-instruct-q4_K_M"
+    ollama_keep_alive: str = "5m"
 
     # Anthropic
     anthropic_api_key: str = ""

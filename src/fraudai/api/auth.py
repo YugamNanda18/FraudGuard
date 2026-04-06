@@ -31,12 +31,24 @@ class User(BaseModel):
     is_admin: bool = False
 
 
+_DEV_USER = User(
+    user_id="dev-user",
+    tenant_id="dev-tenant",
+    email="dev@fraudai.local",
+    tier="enterprise",
+    is_admin=True,
+)
+
+
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
 ) -> User:
     """Validate JWT and return the authenticated user.
 
-    Placeholder -- real implementation in F4 will:
+    In development mode (ENVIRONMENT=development), accepts any non-empty
+    token and returns a dev user with enterprise tier.
+
+    In production, will:
     1. Decode and verify JWT signature (RS256).
     2. Check token expiration and revocation.
     3. Load user profile and tier from the token claims.
@@ -45,7 +57,17 @@ async def get_current_user(
     Raises:
         HTTPException 401: Invalid or expired token.
     """
-    raise NotImplementedError("JWT validation not yet implemented. Scheduled for F4 build phase.")
+    from fraudai.core.config import settings
+
+    if settings.environment == "development":
+        return _DEV_USER
+
+    # Production JWT validation — not yet implemented
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="JWT validation not yet implemented for production.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 async def get_admin_user(

@@ -48,7 +48,10 @@ export function streamChat(
     try {
       const res = await fetch(`${API_BASE}/chat/stream`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer dev-token",
+        },
         body: JSON.stringify(chatRequest),
         signal: controller.signal,
       });

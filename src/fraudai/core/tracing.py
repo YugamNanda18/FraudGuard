@@ -76,17 +76,21 @@ def setup_tracing(level: int = logging.INFO) -> None:
     if any(isinstance(f, CorrelationFilter) for f in root.filters):
         return
 
-    root.addFilter(CorrelationFilter())
-    root.setLevel(level)
+    # Only configure the "fraudai" logger — never touch root logger
+    # to avoid format conflicts with uvicorn/third-party handlers.
+    fraudai_logger = logging.getLogger("fraudai")
 
-    # Only create and configure a handler if none exist.
-    # We intentionally do NOT modify existing handlers' formatters
-    # because external test/logging frameworks may not expect
-    # %(correlation_id)s in their format strings.
-    if not root.handlers:
+    if any(isinstance(f, CorrelationFilter) for f in fraudai_logger.filters):
+        return
+
+    fraudai_logger.addFilter(CorrelationFilter())
+    fraudai_logger.setLevel(level)
+    fraudai_logger.propagate = False
+
+    if not fraudai_logger.handlers:
         handler = logging.StreamHandler()
         handler.setFormatter(logging.Formatter(_TRACING_FORMAT))
-        root.addHandler(handler)
+        fraudai_logger.addHandler(handler)
 
 
 # ---------------------------------------------------------------------------
