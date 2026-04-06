@@ -1,0 +1,80 @@
+# =============================================================================
+# .dockerignore -- Keep build context small and secure
+# =============================================================================
+
+# Version control
+.git/
+.gitignore
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Tests (not needed in production image)
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Linting/typing caches
+.mypy_cache/
+.ruff_cache/
+
+# Documentation (not needed in production image)
+docs/
+historyMD/
+notebooks/
+assets/
+*.md
+LICENSE
+
+# Data and models (mounted as volumes in production)
+data/
+models/
+
+# Secrets (NEVER copy into image)
+.env
+.env.*
+credentials.json
+*.key
+*.pem
+
+# Docker-in-Docker (avoid recursive context)
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Claude / Taskmaster
+.claude/
+.taskmaster/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Lock files (deps resolved in builder stage)
+uv.lock
+
+# Scripts (deployment scripts not needed inside app image)
+scripts/
