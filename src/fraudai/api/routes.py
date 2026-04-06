@@ -348,11 +348,12 @@ async def upload_file(
             detail=f"File too large ({size_bytes} bytes). Maximum: {MAX_FILE_SIZE} bytes (100 MB).",
         )
 
-    # Save to temp directory
+    # Save to temp directory (sanitize filename to prevent path traversal)
     file_id = str(uuid.uuid4())
+    safe_filename = Path(filename).name  # Strip directory components
     tmp_dir = Path(tempfile.gettempdir()) / "fraudai_uploads" / session_id
     tmp_dir.mkdir(parents=True, exist_ok=True)
-    file_path = tmp_dir / f"{file_id}_{filename}"
+    file_path = tmp_dir / f"{file_id}_{safe_filename}"
     file_path.write_bytes(content)
 
     logger.info(

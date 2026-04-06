@@ -166,7 +166,10 @@ class TestAnalyzeTransactions:
 
     async def test_file_not_found(self, tool_impls: ToolImplementations) -> None:
         """analyze_transactions should return error dict for missing file."""
-        result = await tool_impls.analyze_transactions("/nonexistent/file.csv")
+        import tempfile
+        from pathlib import Path as _Path
+        fake_path = str(_Path(tempfile.gettempdir()) / "nonexistent_file.csv")
+        result = await tool_impls.analyze_transactions(fake_path)
 
         assert result["status"] == "failed"
         assert "not found" in result["error"].lower()

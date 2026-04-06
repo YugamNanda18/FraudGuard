@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
+import tempfile
 import textwrap
 from pathlib import Path
 from typing import Any
@@ -114,10 +115,22 @@ class ToolImplementations:
         parsed["duration_seconds"] = result.duration_seconds
         return parsed
 
-    @staticmethod
-    def _read_input_file(data_path: str) -> bytes:
-        """Read a local file to pass into the sandbox as input."""
-        path = Path(data_path)
+    # Allowed base directories for input files (uploads + temp)
+    ALLOWED_INPUT_DIRS: list[str] = [
+        str(Path(tempfile.gettempdir()) / "fraudai_uploads"),
+        str(Path(tempfile.gettempdir())),  # General tmp for sandbox inputs
+    ]
+
+    def _read_input_file(self, data_path: str) -> bytes:
+        """Read a local file to pass into the sandbox as input.
+
+        Validates that the resolved path is within allowed directories
+        to prevent path traversal attacks from LLM tool calls.
+        """
+        path = Path(data_path).resolve()
+        if not any(str(path).startswith(d) for d in self.ALLOWED_INPUT_DIRS):
+            msg = f"Access denied: path '{data_path}' is outside allowed directories"
+            raise PermissionError(msg)
         if not path.exists():
             msg = f"Input file not found: {data_path}"
             raise FileNotFoundError(msg)
@@ -839,6 +852,20 @@ class ToolImplementations:
     # Mike Ross -- AI Red Teaming (uses networked sandbox)
     # ===================================================================
 
+    # Internal/private networks blocked for red teaming tools (SSRF prevention)
+    _BLOCKED_TARGETS = ("localhost", "127.0.0.1", "0.0.0.0", "10.", "172.16.", "172.17.",
+                        "172.18.", "172.19.", "172.20.", "172.21.", "172.22.", "172.23.",
+                        "172.24.", "172.25.", "172.26.", "172.27.", "172.28.", "172.29.",
+                        "172.30.", "172.31.", "192.168.", "169.254.", "[::1]", "metadata.google")
+
+    def _validate_target_endpoint(self, target_endpoint: str) -> None:
+        """Block requests to internal/private networks (SSRF prevention)."""
+        endpoint_lower = target_endpoint.lower()
+        for blocked in self._BLOCKED_TARGETS:
+            if blocked in endpoint_lower:
+                msg = f"Target endpoint blocked (SSRF prevention): {target_endpoint}"
+                raise PermissionError(msg)
+
     async def adversarial_evasion(
         self,
         target_endpoint: str,
@@ -847,7 +874,9 @@ class ToolImplementations:
         """Run adversarial evasion attacks against a fraud detection model endpoint.
 
         Uses the networked sandbox since it needs to reach external endpoints.
+        Target must be an external endpoint — internal networks are blocked.
         """
+        self._validate_target_endpoint(target_endpoint)
         logger.info(
             "adversarial_evasion: target=%s, attack_type=%s",
             target_endpoint, attack_type,
@@ -993,7 +1022,9 @@ class ToolImplementations:
         """Test an LLM endpoint for prompt injection vulnerabilities.
 
         Uses the networked sandbox since it needs to reach external endpoints.
+        Target must be an external endpoint — internal networks are blocked.
         """
+        self._validate_target_endpoint(target_endpoint)
         logger.info(
             "prompt_injection_suite: target=%s, system_prompt=%s",
             target_endpoint,
