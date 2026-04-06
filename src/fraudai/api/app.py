@@ -72,6 +72,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         tool_registry = None  # type: ignore[assignment]
         retriever = None  # type: ignore[assignment]
 
+    # Inject ToolRegistry into graph BEFORE compilation
+    if tool_registry is not None:
+        from fraudai.agents.graph import set_tool_registry
+        set_tool_registry(tool_registry)
+
     # LangGraph compiled graph
     graph = build_fraud_ai_graph()
     logger.info("LangGraph orchestration graph compiled")

@@ -7,6 +7,7 @@ import type {
   ChatResponse,
   ToolResult,
 } from "@/lib/types";
+import { streamChat } from "@/lib/sse";
 import {
   sendMessage as apiSendMessage,
   uploadFile as apiUploadFile,
@@ -68,47 +69,88 @@ export function useChat() {
 
       setIsStreaming(true);
 
-      try {
-        const response = await apiSendMessage({
+      const controller = streamChat(
+        {
           message: content,
           session_id: sessionId,
           agent_override: agentOverride ?? null,
           language: "es",
-        });
+        },
+        // onToken — progressive text
+        (token: string) => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId
+                ? { ...m, content: m.content + token }
+                : m,
+            ),
+          );
+        },
+        // onToolStart
+        (toolName: string) => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId
+                ? {
+                    ...m,
+                    tool_results: [
+                      ...(m.tool_results ?? []),
+                      { tool_name: toolName, status: "pending" as const, result: null, duration_ms: 0 },
+                    ],
+                  }
+                : m,
+            ),
+          );
+        },
+        // onToolResult
+        (result: ToolResult) => {
+          setMessages((prev) =>
+            prev.map((m) => {
+              if (m.id !== assistantId) return m;
+              const tools = (m.tool_results ?? []).map((t) =>
+                t.tool_name === result.tool_name && t.status === "pending" ? result : t,
+              );
+              return { ...m, tool_results: tools };
+            }),
+          );
+        },
+        // onDone — final response with metadata
+        (response: ChatResponse) => {
+          setSessionId(response.session_id);
+          setCurrentAgent(response.agent as AgentName);
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId
+                ? {
+                    ...m,
+                    content: m.content || response.message || "No response generated.",
+                    agent: response.agent,
+                    citations: response.citations,
+                    tool_results: response.tool_results?.length ? response.tool_results : m.tool_results,
+                    metadata: response.metadata,
+                    isStreaming: false,
+                  }
+                : m,
+            ),
+          );
+          setIsStreaming(false);
+          abortRef.current = null;
+        },
+        // onError
+        (error: string) => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId
+                ? { ...m, content: `Error: ${error}`, isStreaming: false }
+                : m,
+            ),
+          );
+          setIsStreaming(false);
+          abortRef.current = null;
+        },
+      );
 
-        setSessionId(response.session_id);
-        setCurrentAgent(response.agent as AgentName);
-
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId
-              ? {
-                  ...m,
-                  content: response.message || "No response generated.",
-                  agent: response.agent,
-                  citations: response.citations,
-                  tool_results: response.tool_results,
-                  metadata: response.metadata,
-                  isStreaming: false,
-                }
-              : m,
-          ),
-        );
-      } catch (err: unknown) {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId
-              ? {
-                  ...m,
-                  content: `Error: ${err instanceof Error ? err.message : "Unknown error"}`,
-                  isStreaming: false,
-                }
-              : m,
-          ),
-        );
-      } finally {
-        setIsStreaming(false);
-      }
+      abortRef.current = controller;
     },
     [isStreaming, sessionId],
   );

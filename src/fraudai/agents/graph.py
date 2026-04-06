@@ -200,6 +200,20 @@ async def donna_router_node(state: AgentState) -> dict[str, Any]:
     }
 
 
+_tool_registry: Any | None = None
+
+
+def set_tool_registry(registry: Any) -> None:
+    """Inject a ToolRegistry instance for live RAG-connected tools.
+
+    Called from ``app.py`` lifespan after the registry is created.
+    If never called, agents fall back to stub tools from ``AGENT_TOOLS``.
+    """
+    global _tool_registry  # noqa: PLW0603
+    _tool_registry = registry
+    logger.info("ToolRegistry injected into graph — agents will use RAG-connected tools")
+
+
 async def _specialist_node(
     agent_name: str,
     state: AgentState,
@@ -207,10 +221,20 @@ async def _specialist_node(
     """Generic specialist node — calls invoke_claude_agent with the
     appropriate prompt and tools for *agent_name*.
     """
+    # Use ToolRegistry if available (RAG-connected), else fall back to stubs
+    if _tool_registry is not None:
+        try:
+            tools = _tool_registry.get_tools_for_agent(agent_name)
+        except Exception:
+            logger.warning("ToolRegistry failed for '%s', falling back to stubs", agent_name)
+            tools = AGENT_TOOLS.get(agent_name, [])
+    else:
+        tools = AGENT_TOOLS.get(agent_name, [])
+
     response = await invoke_claude_agent(
         agent_name=agent_name,
         system_prompt=AGENT_PROMPTS[agent_name],
-        tools=AGENT_TOOLS.get(agent_name, []),
+        tools=tools,
         state=state,
     )
 
