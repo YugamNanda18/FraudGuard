@@ -48,6 +48,30 @@ SaaS B2B con tiers:
 
 **Criterio de aceptación:** Pricing matrix definida con feature gates por tier.
 
+### BR-006 | MUST | Interfaz de usuario
+Doble interfaz:
+- **API REST (FastAPI):** Endpoint principal para integraciones B2B, SDKs, y uso programático
+- **Web Chat (Next.js + React):** Interfaz conversacional para uso directo por analistas y red teamers
+
+Estrategia de entrega:
+- F4: API-only (MVP funcional, todos los agentes accesibles via endpoints)
+- F4.5: Web chat (conversational UX, upload de documentos, visualización de grafos/reportes)
+
+**Criterio de aceptación:** API documentada con OpenAPI spec. Web chat soporta conversación multi-turn, upload de archivos, y renderizado de reportes/grafos.
+
+### BR-007 | SHOULD | Internacionalización (i18n)
+Idiomas soportados:
+- **MVP:** Español (ES) + Inglés (EN)
+- **Post-MVP:** Portugués (PT) — mercado ibérico/latam
+
+Alcance:
+- Agentes responden en el idioma del usuario (auto-detect o configuración de sesión)
+- RAG: normativa española siempre en español; normativa EU disponible en ES/EN
+- Personalidades de agentes se mantienen en ambos idiomas
+- UI del web chat: ES/EN
+
+**Criterio de aceptación:** Conversación completa en español e inglés sin degradación de calidad en ningún agente.
+
 ---
 
 ## 2. User Requirements (UR)
@@ -122,6 +146,11 @@ Como usuario, quiero subir documentos (contratos, datasets, logs) y que permanez
 Como usuario, quiero que si mi caso cruza dominios (ej: fraude + compliance), los agentes colaboren automáticamente.
 
 **Criterio de aceptación:** LangGraph orquesta transferencia de contexto entre agentes sin pérdida de información.
+
+#### UR-014 | SHOULD | Feedback del usuario
+Como usuario, quiero poder valorar las respuestas de los agentes (util/no util) y corregir errores para que el sistema mejore.
+
+**Criterio de aceptación:** Cada respuesta tiene opción de feedback (thumbs up/down + comentario opcional). Feedback almacenado para evaluación y mejora continua del sistema (prompt tuning, retrieval quality).
 
 ---
 
@@ -205,7 +234,8 @@ Como usuario, quiero que si mi caso cruza dominios (ej: fraude + compliance), lo
 - Sin acceso a filesystem del host
 - Sin acceso a red externa (excepto APIs autorizadas)
 - Timeout máximo de ejecución: 10min
-- Límites de memoria: 4GB por ejecución
+- Límites de memoria: 8GB por ejecución (para soportar datasets de hasta 100MB con overhead de análisis ML)
+- Límites de CPU: 4 cores por ejecución
 
 **Criterio de aceptación:** Penetration test no logra escapar del sandbox.
 
@@ -278,12 +308,15 @@ Como usuario, quiero que si mi caso cruza dominios (ej: fraude + compliance), lo
 
 **Criterio de aceptación:** Directivas EU clave indexadas y accesibles via RAG.
 
-#### SR-017 | COULD | LLM Provider API
-- **Opciones:** Anthropic Claude API, OpenAI, modelo local (Llama/Mistral en RTX 2000 Ada)
-- **Decisión pendiente en F0.5:** Trade-off coste vs latencia vs privacidad
-- **Para Nivel 3:** Necesita function calling robusto
+#### SR-017 | MUST | LLM Provider API
+- **Opciones a evaluar en F0.5:**
+  - Anthropic Claude API — mejor tool use, español robusto, coste medio
+  - Modelo local (Llama 3.x / Mistral) en RTX 2000 Ada — coste cero, latencia variable, privacidad total
+- **Para Nivel 3:** Necesita function calling robusto y mantenimiento de personalidad via system prompt
+- **Estrategia recomendada:** Claude API para agentes complejos (Mike, Harvey) + modelo local para queries simples y Donna (routing)
+- **Decisión obligatoria en F0.5** con ADR que cubra: coste proyectado, latencia, privacidad, function calling quality
 
-**Criterio de aceptación:** ADR documentado con decisión justificada.
+**Criterio de aceptación:** ADR documentado con benchmarks comparativos en tareas de fraude bancario.
 
 ### 3.4 Normativa legal clave a indexar en RAG
 
@@ -316,15 +349,27 @@ Como usuario, quiero que si mi caso cruza dominios (ej: fraude + compliance), lo
 
 **Criterio de aceptación:** Retrieval accuracy >85% en benchmark de preguntas legales de fraude bancario.
 
+### MLR-006 | SHOULD | Versionado del corpus RAG
+- Cada ingestion semanal genera una versión inmutable del corpus (snapshot)
+- Metadata por chunk incluye: fecha_ingestion, fecha_publicacion_boe, estado_consolidacion, version_corpus
+- Rollback posible a versiones anteriores si se detecta corrupción
+- El agente incluye en su respuesta la fecha de última actualización del corpus usado
+- Normativa derogada se marca como tal pero no se elimina (histórico)
+
+**Criterio de aceptación:** El usuario puede saber qué versión del corpus se usó en cada respuesta. Rollback ejecutable en <5min.
+
 ### MLR-002 | MUST | Modelo LLM base
 - **Requisito:** Soporte robusto de function calling / tool use
 - **Opciones a evaluar en F0.5:**
-  - Claude API (Anthropic) — mejor tool use, coste medio
-  - GPT-4o (OpenAI) — alternativa, coste medio
-  - Modelo local (Llama 3.x / Mistral) en RTX 2000 Ada — coste cero, latencia variable
-- **Requisito de personalidad:** El modelo debe poder mantener personalidad consistente (Harvey vs Louis) via system prompt
+  - Anthropic Claude API — mejor tool use, español robusto, coste medio
+  - Modelo local (Llama 3.x / Mistral) en RTX 2000 Ada 8GB — coste cero, latencia variable, privacidad total
+- **Nota:** No se consideran GPT/Gemini — fuera del stack del proyecto
+- **Estrategia híbrida recomendada:**
+  - Claude API para agentes complejos (Harvey, Mike, Jessica, Louis) que requieren tool use avanzado
+  - Modelo local para Donna (routing — tarea ligera) y queries RAG simples
+- **Requisito de personalidad:** El modelo debe mantener personalidad consistente (Harvey vs Louis) via system prompt sin drift durante la conversación
 
-**Criterio de aceptación:** ADR con benchmarks comparativos en tareas de fraude.
+**Criterio de aceptación:** ADR con benchmarks comparativos en tareas de fraude bancario (function calling accuracy, personalidad, latencia, coste por sesión).
 
 ### MLR-003 | SHOULD | Modelos ML para análisis (Harvey)
 - **Anomaly detection:** Isolation Forest, Autoencoders (para datasets del cliente)

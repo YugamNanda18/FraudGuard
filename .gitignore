@@ -33,6 +33,8 @@ data/processed/*
 !data/.gitkeep
 !data/raw/.gitkeep
 !data/processed/.gitkeep
+!tests/fixtures/*.csv
+!tests/fixtures/*.json
 
 # Models
 models/*
