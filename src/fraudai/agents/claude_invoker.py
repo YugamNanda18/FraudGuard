@@ -140,11 +140,34 @@ class ClaudeAgentInvoker:
 
         ai_message = await self._invoke_with_retry(model, messages, agent_name)
 
+        # Process tool calls and re-invoke LLM with results if needed
+        tool_results = await self._process_tool_calls(ai_message, tools)
+
+        if tool_results:
+            # Send tool results back to LLM for final text response
+            from langchain_core.messages import ToolMessage
+
+            messages_with_tools = [*messages, ai_message]
+            for tr in tool_results:
+                tool_call_id = ""
+                for tc in getattr(ai_message, "tool_calls", []):
+                    tc_name = tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", "")
+                    if tc_name == tr["tool_name"]:
+                        tool_call_id = tc.get("id", "") if isinstance(tc, dict) else getattr(tc, "id", "")
+                        break
+                messages_with_tools.append(
+                    ToolMessage(
+                        content=str(tr.get("tool_output", tr.get("error", "No output"))),
+                        tool_call_id=tool_call_id or tr["tool_name"],
+                    )
+                )
+            # Re-invoke without tools to get final text response
+            ai_message = await self._invoke_with_retry(
+                self._model, messages_with_tools, agent_name
+            )
+
         duration = _time.monotonic() - start
         AGENT_LATENCY.labels(agent_name=agent_name).observe(duration)
-
-        # Process tool calls
-        tool_results = await self._process_tool_calls(ai_message, tools)
 
         # Extract content for analysis
         content = self._extract_content(ai_message)
