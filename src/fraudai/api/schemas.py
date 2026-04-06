@@ -51,8 +51,7 @@ class Citation(BaseModel):
     )
     score: float = Field(
         ge=0.0,
-        le=1.0,
-        description="Retrieval confidence score (0-1).",
+        description="Retrieval relevance score (unbounded — RRF/reranker scores may exceed 1.0).",
     )
 
 

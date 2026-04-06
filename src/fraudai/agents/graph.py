@@ -143,13 +143,16 @@ def route_from_donna(state: AgentState) -> str:
     return "clarify"
 
 
+_MAX_ESCALATIONS = 3
+
+
 def route_after_agent(state: AgentState) -> str:
     """Decide whether the agent responds directly or escalates.
 
     If the agent set an ``escalation_request``, return to Donna for
-    re-routing.  Otherwise proceed to the responder node.
+    re-routing.  Caps at _MAX_ESCALATIONS to prevent infinite loops (Bug #27).
     """
-    if state.get("escalation_request"):
+    if state.get("escalation_request") and state.get("turn_count", 0) < _MAX_ESCALATIONS:
         return "escalate"
     return "respond"
 
@@ -173,9 +176,14 @@ def route_after_confirmation(state: AgentState) -> str:
 async def donna_router_node(state: AgentState) -> dict[str, Any]:
     """Donna: classify user intent with local model and update routing.
 
-    Uses Ollama (Llama 3.1 8B Q4_K_M) for lightweight intent
-    classification into one of five specialist categories.
+    If ``current_agent`` is already set (via agent_override), skip
+    classification and respect the override.
     """
+    # Bug #1 fix: respect agent_override from ChatRequest
+    if state.get("current_agent") is not None:
+        logger.info("Donna: agent_override active, skipping classification -> %s", state["current_agent"])
+        return {"turn_count": state.get("turn_count", 0) + 1}
+
     last_message = state["messages"][-1]
     raw_content = last_message.content if hasattr(last_message, "content") else str(last_message)
     user_text = raw_content if isinstance(raw_content, str) else str(raw_content)

@@ -57,6 +57,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     except Exception:
         logger.exception("QdrantStore initialization failed -- continuing in degraded mode")
 
+    # RAG retriever + tool registry (Bug #4 fix: wire ToolRegistry into runtime)
+    from fraudai.agents.tool_registry import ToolRegistry
+    from fraudai.ingestion.embeddings import EmbeddingGenerator
+    from fraudai.rag.retriever import LegalRetriever
+
+    try:
+        embedder = EmbeddingGenerator(device="cpu")
+        retriever = LegalRetriever(store=store, embedder=embedder)
+        tool_registry = ToolRegistry(retriever=retriever)
+        logger.info("ToolRegistry initialized with LegalRetriever")
+    except Exception:
+        logger.exception("ToolRegistry initialization failed — tools will use stubs")
+        tool_registry = None  # type: ignore[assignment]
+        retriever = None  # type: ignore[assignment]
+
     # LangGraph compiled graph
     graph = build_fraud_ai_graph()
     logger.info("LangGraph orchestration graph compiled")
@@ -64,8 +79,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     # Session manager (in-memory MVP)
     session_manager = SessionManager()
 
-    # Feedback store (in-memory MVP -- list of dicts)
-    feedback_store: list[dict[str, Any]] = []
+    # Feedback store (in-memory MVP -- list of deque for bounded memory, Bug #14)
+    from collections import deque
+    feedback_store: deque[dict[str, Any]] = deque(maxlen=10_000)
 
     # Publish system info to Prometheus
     from fraudai.core.metrics import SYSTEM_INFO
@@ -82,6 +98,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.state.store = store
     app.state.session_manager = session_manager
     app.state.feedback_store = feedback_store
+    app.state.tool_registry = tool_registry
+    app.state.retriever = retriever
 
     yield
 

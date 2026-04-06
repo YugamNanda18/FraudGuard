@@ -59,7 +59,7 @@ async def get_current_user(
     """
     from fraudai.core.config import settings
 
-    if settings.environment == "development":
+    if settings.environment in ("development", "staging"):
         return _DEV_USER
 
     # Production JWT validation — not yet implemented
