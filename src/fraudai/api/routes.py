@@ -281,6 +281,18 @@ async def chat_stream(
                     if langgraph_node and langgraph_node not in ("donna", "responder", "human_confirmation"):
                         agent_name = langgraph_node
 
+                elif event_type == "on_chain_end":
+                    # Capture non-streamed messages (e.g. responder node)
+                    output = event.get("data", {}).get("output", {})
+                    if isinstance(output, dict):
+                        msgs = output.get("messages", [])
+                        for msg in msgs:
+                            if hasattr(msg, "content") and isinstance(msg, AIMessage) and msg.content:
+                                if msg.content not in accumulated_content:
+                                    accumulated_content += msg.content
+                                    payload = {"type": "token", "content": msg.content}
+                                    yield f"data: {json.dumps(payload)}\n\n"
+
                 elif event_type == "on_tool_start":
                     tool_name = event.get("name", "unknown")
                     payload = {"type": "tool_start", "tool_name": tool_name}

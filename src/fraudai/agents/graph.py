@@ -268,12 +268,25 @@ async def human_confirmation_node(state: AgentState) -> dict[str, Any]:
     }
 
 
+_CLARIFICATION_MESSAGE = (
+    "Soy Donna Paulsen, directora del bufete FraudAI. "
+    "Puedo derivarte al especialista adecuado. Dime en qué necesitas ayuda:\n\n"
+    "- **Harvey Specter** — Análisis de transacciones y detección de fraude\n"
+    "- **Louis Litt** — Normativa AML, KYC, compliance y reportes regulatorios\n"
+    "- **Jessica Pearson** — Investigación de redes de fraude y análisis de grafos\n"
+    "- **Mike Ross** — Red teaming y seguridad de modelos de IA\n"
+    "- **Rachel Zane** — Pipelines de datos y feature engineering\n\n"
+    "Cuéntame tu caso y te derivo al especialista correcto."
+)
+
+
 async def responder_node(state: AgentState) -> dict[str, Any]:
     """Format the final response to the user.
 
-    In the current stub this is a pass-through — the last message in
-    state already contains the agent's response.  In F4 this node will
-    handle response formatting, citation injection, and streaming setup.
+    Handles three cases:
+    1. Clarification: Donna couldn't route — ask the user for more detail.
+    2. Mike cancellation: user rejected a red teaming action.
+    3. Pass-through: the specialist's response is already in messages.
     """
     # If the user rejected Mike's action, add a cancellation message
     if state.get("needs_human_confirmation") and state.get("current_agent") == "mike":
@@ -285,6 +298,13 @@ async def responder_node(state: AgentState) -> dict[str, Any]:
                 )
             ],
             "needs_human_confirmation": False,
+        }
+
+    # If Donna couldn't classify (agent is None or donna), send clarification
+    current = state.get("current_agent")
+    if current is None or current == "donna":
+        return {
+            "messages": [AIMessage(content=_CLARIFICATION_MESSAGE)],
         }
 
     # Pass-through: the specialist's response is already in messages
