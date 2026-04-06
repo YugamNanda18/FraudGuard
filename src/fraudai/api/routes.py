@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 import httpx as httpx_client
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.types import Command
 
@@ -718,7 +718,7 @@ async def health(request: Request) -> HealthResponse:
 @router.get("/admin/metrics")
 async def metrics(
     user: User = Depends(get_admin_user),
-) -> dict[str, object]:
+) -> Response:
     """Prometheus-compatible metrics endpoint.
 
     Exposes:
@@ -730,6 +730,9 @@ async def metrics(
 
     Requires admin privileges.
     """
-    raise NotImplementedError(
-        "Metrics endpoint not yet implemented. Scheduled for F7 monitoring phase."
+    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+
+    return Response(
+        content=generate_latest(),
+        media_type=CONTENT_TYPE_LATEST,
     )

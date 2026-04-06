@@ -21,9 +21,11 @@ if TYPE_CHECKING:
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from fraudai.api.middleware import MetricsMiddleware
 from fraudai.api.routes import router as api_router
 from fraudai.api.session_manager import SessionManager
 from fraudai.core.config import settings
+from fraudai.core.tracing import setup_tracing
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +67,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     # Feedback store (in-memory MVP -- list of dicts)
     feedback_store: list[dict[str, Any]] = []
 
+    # Publish system info to Prometheus
+    from fraudai.core.metrics import SYSTEM_INFO
+
+    SYSTEM_INFO.info(
+        {
+            "version": "0.1.0",
+            "environment": settings.environment,
+        }
+    )
+
     # Attach to app.state for route access
     app.state.graph = graph
     app.state.store = store
@@ -94,6 +106,9 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
     )
 
+    # --- Structured logging with correlation IDs ---
+    setup_tracing()
+
     # --- CORS ---
     # Permissive in development; lock down in production via env config.
     app.add_middleware(
@@ -103,6 +118,9 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # --- Prometheus metrics + correlation ID middleware ---
+    app.add_middleware(MetricsMiddleware)
 
     # --- Routes ---
     app.include_router(api_router, prefix="/api/v1")

@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
+from fraudai.core.metrics import RETRIEVAL_LATENCY, RETRIEVAL_RESULTS
 from fraudai.rag.prompt_templates import (
     LOUIS_RAG_TEMPLATE,
     RAG_CONTEXT_TEMPLATE,
@@ -130,8 +131,12 @@ class LegalRetriever:
         Returns:
             Ranked list of ``RetrievalResult`` objects.
         """
+        import time as _time
+
         final_k = k or self._default_k
         target_collection = collection or QdrantStore.BOE_COLLECTION
+
+        start = _time.monotonic()
 
         # Step 1: Encode the query (dense + sparse).
         embeddings = self._embedder.encode([query])
@@ -164,6 +169,11 @@ class LegalRetriever:
             results = self._reranker.rerank(query, results, top_k=final_k)
         else:
             results = results[:final_k]
+
+        # --- Prometheus metrics ---
+        duration = _time.monotonic() - start
+        RETRIEVAL_LATENCY.labels(collection=target_collection).observe(duration)
+        RETRIEVAL_RESULTS.labels(collection=target_collection).observe(len(results))
 
         logger.info(
             "Retrieved %d results for query (collection=%s, k=%d, reranked=%s)",

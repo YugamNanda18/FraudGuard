@@ -20,6 +20,8 @@ import docker
 import docker.errors
 from pydantic import BaseModel
 
+from fraudai.core.metrics import SANDBOX_DURATION, SANDBOX_EXECUTIONS
+
 logger = logging.getLogger(__name__)
 
 
@@ -276,6 +278,15 @@ class SandboxEngine:
                 timed_out,
                 len(collected_files),
             )
+
+            # --- Record Prometheus metrics ---------------------------------
+            SANDBOX_DURATION.observe(duration)
+            if timed_out:
+                SANDBOX_EXECUTIONS.labels(status="timeout").inc()
+            elif exit_code == 0:
+                SANDBOX_EXECUTIONS.labels(status="success").inc()
+            else:
+                SANDBOX_EXECUTIONS.labels(status="error").inc()
 
             return SandboxResult(
                 exit_code=exit_code,

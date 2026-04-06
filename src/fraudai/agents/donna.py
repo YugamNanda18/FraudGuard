@@ -14,6 +14,8 @@ from typing import Any, TypedDict
 
 import httpx
 
+from fraudai.core.metrics import AGENT_LATENCY, ROUTING_ACCURACY
+
 
 class IntentClassification(TypedDict):
     """Return contract for intent classification.
@@ -173,19 +175,43 @@ class DonnaRouter:
             IntentClassification with agent, language, and confidence.
             Agent is None when confidence < 0.7 (triggers clarification).
         """
+        import time as _time
+
+        start = _time.monotonic()
+        result: IntentClassification | None = None
         try:
             result = await self._call_ollama(message)
             return result
         except (httpx.TimeoutException, httpx.ConnectError) as exc:
             logger.warning("Ollama unreachable (%s), falling back to keywords", type(exc).__name__)
-            return classify_by_keywords(message)
+            result = classify_by_keywords(message)
+            return result
         except (json.JSONDecodeError, KeyError, ValueError) as exc:
             logger.warning(
                 "Ollama returned invalid response (%s: %s), falling back to keywords",
                 type(exc).__name__,
                 exc,
             )
-            return classify_by_keywords(message)
+            result = classify_by_keywords(message)
+            return result
+        finally:
+            duration = _time.monotonic() - start
+            AGENT_LATENCY.labels(agent_name="donna").observe(duration)
+            if result is not None:
+                self._record_routing(result)
+
+    @staticmethod
+    def _record_routing(result: IntentClassification) -> None:
+        """Record a routing decision in Prometheus metrics."""
+        confidence = result.get("confidence", 0.0)
+        if confidence >= 0.85:
+            bucket = "high"
+        elif confidence >= 0.7:
+            bucket = "medium"
+        else:
+            bucket = "low"
+        target = result.get("agent") or "clarify"
+        ROUTING_ACCURACY.labels(target_agent=target, confidence_bucket=bucket).inc()
 
     async def _call_ollama(self, message: str) -> IntentClassification:
         """Send classification request to Ollama and parse response."""

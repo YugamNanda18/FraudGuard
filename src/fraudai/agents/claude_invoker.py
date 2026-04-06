@@ -15,6 +15,8 @@ from typing import TYPE_CHECKING, Any
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import AIMessage, SystemMessage
 
+from fraudai.core.metrics import AGENT_INVOCATIONS, AGENT_LATENCY, TOKENS_USED
+
 if TYPE_CHECKING:
     from fraudai.agents.graph import AgentInvocationResult
     from fraudai.agents.state import AgentState
@@ -91,10 +93,18 @@ class ClaudeAgentInvoker:
         Returns:
             Dict matching the ``AgentInvocationResult`` TypedDict contract.
         """
+        import time as _time
+
+        AGENT_INVOCATIONS.labels(agent_name=agent_name).inc()
+        start = _time.monotonic()
+
         messages = self._build_messages(system_prompt, state)
         model = self._bind_tools(tools)
 
         ai_message = await self._invoke_with_retry(model, messages, agent_name)
+
+        duration = _time.monotonic() - start
+        AGENT_LATENCY.labels(agent_name=agent_name).observe(duration)
 
         # Process tool calls
         tool_results = await self._process_tool_calls(ai_message, tools)
@@ -110,6 +120,7 @@ class ClaudeAgentInvoker:
 
         # Log token usage if available
         self._log_token_usage(ai_message, agent_name)
+        self._record_token_metrics(ai_message, agent_name)
 
         return {
             "message": ai_message,
@@ -313,6 +324,27 @@ class ClaudeAgentInvoker:
             summary += f" [Tools: {success_count}/{tool_count} succeeded]"
 
         return summary
+
+    @staticmethod
+    def _record_token_metrics(ai_message: AIMessage, agent_name: str) -> None:
+        """Record token usage in Prometheus counters."""
+        usage = getattr(ai_message, "usage_metadata", None)
+        if not usage:
+            return
+        input_tokens = (
+            usage.get("input_tokens", 0)
+            if isinstance(usage, dict)
+            else getattr(usage, "input_tokens", 0)
+        )
+        output_tokens = (
+            usage.get("output_tokens", 0)
+            if isinstance(usage, dict)
+            else getattr(usage, "output_tokens", 0)
+        )
+        if input_tokens:
+            TOKENS_USED.labels(agent_name=agent_name, direction="input").inc(input_tokens)
+        if output_tokens:
+            TOKENS_USED.labels(agent_name=agent_name, direction="output").inc(output_tokens)
 
     def _log_token_usage(self, ai_message: AIMessage, agent_name: str) -> None:
         """Log token usage from the response metadata if available."""
