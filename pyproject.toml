@@ -18,12 +18,14 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn>=0.34",
     "pydantic>=2.10",
+    "pydantic-settings>=2.7",
     "httpx>=0.28",
     "python-multipart>=0.0.18",
     "networkx>=3.4",
     "pandas>=2.2",
     "numpy>=2.1",
     "scikit-learn>=1.6",
+    "beautifulsoup4>=4.12",
 ]
 
 [project.optional-dependencies]
@@ -61,3 +63,4 @@ mypy_path = "src"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+asyncio_mode = "auto"
