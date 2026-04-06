@@ -49,7 +49,7 @@ def analyze_transactions(data_path: str, file_format: str = "csv") -> dict[str, 
         Dict with keys: summary (distribution stats), anomalies (list of
         flagged rows with Z-scores), total_transactions, anomaly_rate.
     """
-    raise NotImplementedError("Sandbox execution not yet connected (F4)")
+    return {"status": "unavailable", "message": "Sandbox not connected. Deploy with ./scripts/deploy.sh"}
 
 
 @tool
@@ -72,7 +72,7 @@ def detect_patterns(
         outliers (list of outlier transactions), model_params,
         silhouette_score.
     """
-    raise NotImplementedError("Sandbox execution not yet connected (F4)")
+    return {"status": "unavailable", "message": "Sandbox not connected. Deploy with ./scripts/deploy.sh"}
 
 
 @tool
@@ -90,7 +90,7 @@ def risk_scoring(data_path: str) -> dict[str, Any]:
         account_scores (list of {account_id, score, top_factors}),
         high_risk_count, score_distribution.
     """
-    raise NotImplementedError("Sandbox execution not yet connected (F4)")
+    return {"status": "unavailable", "message": "Sandbox not connected. Deploy with ./scripts/deploy.sh"}
 
 
 @tool
@@ -109,7 +109,7 @@ def generate_rules(patterns: dict[str, Any]) -> dict[str, Any]:
         actions), format ("yaml" | "json"), coverage_estimate,
         false_positive_estimate.
     """
-    raise NotImplementedError("Sandbox execution not yet connected (F4)")
+    return {"status": "unavailable", "message": "Sandbox not connected. Deploy with ./scripts/deploy.sh"}
 
 
 # ---------------------------------------------------------------------------
@@ -186,7 +186,7 @@ def search_boe(
         List of dicts, each with keys: text (article content), boe_id,
         norma_titulo, articulo, seccion, rango, score.
     """
-    raise NotImplementedError("RAG pipeline not yet connected (F4)")
+    return [{"status": "unavailable", "message": "RAG not connected. Run BOE ingestion first: python -m fraudai.ingestion --mode full"}]
 
 
 @tool
@@ -211,7 +211,7 @@ def generate_sar_report(
         risk_indicators (list of FATF red flags matched),
         regulatory_basis (list of cited articles).
     """
-    raise NotImplementedError("Report generation not yet connected (F4)")
+    return {"status": "unavailable", "message": "Report generation not connected. Deploy with ./scripts/deploy.sh"}
 
 
 @tool
@@ -231,7 +231,7 @@ def compliance_checklist(regulation: str) -> dict[str, Any]:
         description, status}), total_items, regulation_full_name,
         last_updated.
     """
-    raise NotImplementedError("Checklist generation not yet connected (F4)")
+    return {"status": "unavailable", "message": "Checklist generation not connected. Deploy with ./scripts/deploy.sh"}
 
 
 # ---------------------------------------------------------------------------
@@ -257,7 +257,7 @@ def graph_analysis(data_path: str) -> dict[str, Any]:
         bridges (list of bridge node IDs), graph_stats (nodes, edges,
         density, modularity), visualization_data (D3.js-compatible JSON).
     """
-    raise NotImplementedError("Sandbox execution not yet connected (F4)")
+    return {"status": "unavailable", "message": "Sandbox not connected. Deploy with ./scripts/deploy.sh"}
 
 
 # ---------------------------------------------------------------------------
@@ -286,7 +286,7 @@ def adversarial_evasion(
         adversarial_predictions (list), perturbation_stats,
         severity (Critical/High/Medium/Low), mitigations (list).
     """
-    raise NotImplementedError("Sandbox execution not yet connected (F4)")
+    return {"status": "unavailable", "message": "Sandbox not connected. Deploy with ./scripts/deploy.sh"}
 
 
 @tool
@@ -308,7 +308,7 @@ def prompt_injection_suite(
         severity, category}), success_rate, total_payloads_tested,
         categories_tested (list), mitigations (list).
     """
-    raise NotImplementedError("Sandbox execution not yet connected (F4)")
+    return {"status": "unavailable", "message": "Sandbox not connected. Deploy with ./scripts/deploy.sh"}
 
 
 # ---------------------------------------------------------------------------
@@ -338,7 +338,7 @@ def generate_pipeline(
         (list of pipeline stage descriptions), dependencies (list of
         required packages), validation_rules (list of included checks).
     """
-    raise NotImplementedError("Code generation not yet connected (F4)")
+    return {"status": "unavailable", "message": "Code generation not connected. Deploy with ./scripts/deploy.sh"}
 
 
 @tool
@@ -359,7 +359,7 @@ def data_quality_check(data_path: str) -> dict[str, Any]:
         (per-column summary stats), issues (prioritised list of
         problems), overall_quality_score (0-100).
     """
-    raise NotImplementedError("Sandbox execution not yet connected (F4)")
+    return {"status": "unavailable", "message": "Sandbox not connected. Deploy with ./scripts/deploy.sh"}
 
 
 # ---------------------------------------------------------------------------

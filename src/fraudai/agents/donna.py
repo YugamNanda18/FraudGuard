@@ -65,8 +65,11 @@ _KEYWORD_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     (
         "harvey",
         re.compile(
-            r"(?i)\b(?:fraude|fraud|transacci|transaction|anomal|riesgo|risk|"
-            r"scoring|sospech|suspicious|alerta|alert|detection|detectar)\b"
+            r"(?i)\b(?:fraude|fraud|estafa|scam|transacci|transaction|anomal|"
+            r"riesgo|risk|scoring|sospech|suspicious|alerta|alert|detection|"
+            r"detectar|robo|theft|tarjeta|card|carding|skimming|phishing|"
+            r"movimiento|pago|payment|transferencia|transfer|cuenta|account|"
+            r"operaci[oó]n|dinero|money)\b"
         ),
     ),
     (
@@ -74,7 +77,10 @@ _KEYWORD_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
         re.compile(
             r"(?i)\b(?:compliance|cumplimiento|aml|kyc|psd2|rgpd|gdpr|"
             r"regulaci|regulation|blanqueo|laundering|sar|str|sepblac|"
-            r"normativa|legal|ley|law|art[i\u00ed]culo|article)\b"
+            r"normativa|legal|ley|law|art[ií]culo|article|denuncia|denunciar|"
+            r"penal|sancion|sanction|multa|fine|reclamaci|complaint|contrato|"
+            r"contract|obligaci|derecho|right|tribunal|juzgado|court|"
+            r"abogado|lawyer|defensa|protecci[oó]n|consumidor|consumer)\b"
         ),
     ),
     (
@@ -82,15 +88,17 @@ _KEYWORD_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
         re.compile(
             r"(?i)\b(?:red\s+de\s+fraude|fraud\s+network|grafo|graph|"
             r"network|investigaci|investigation|identidad|identity|"
-            r"fatf|gafi|tipolog|typolog|comunidad|community)\b"
+            r"fatf|gafi|tipolog|typolog|comunidad|community|"
+            r"mula|relacion|v[ií]nculo|link|conexi[oó]n|patr[oó]n)\b"
         ),
     ),
     (
         "mike",
         re.compile(
-            r"(?i)\b(?:red\s+team|adversar|evasion|evasi\u00f3n|prompt\s+injection|"
+            r"(?i)\b(?:red\s+team|adversar|evasion|evasi[oó]n|prompt\s+injection|"
             r"ataque|attack|seguridad\s+ia|ai\s+security|pentest|"
-            r"vulnerabilid|vulnerability|robustez|robustness)\b"
+            r"vulnerabilid|vulnerability|robustez|robustness|"
+            r"modelo\s+ml|hackear|hack|exploit|inyecci[oó]n)\b"
         ),
     ),
     (
@@ -98,7 +106,8 @@ _KEYWORD_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
         re.compile(
             r"(?i)\b(?:etl|pipeline|feature|ingenier.a\s+de\s+datos|"
             r"data\s+engineer|calidad\s+de\s+datos|data\s+quality|"
-            r"esquema|schema|parquet|csv|polars|pandas)\b"
+            r"esquema|schema|parquet|csv|polars|pandas|"
+            r"base\s+de\s+datos|database|columna|tabla|table)\b"
         ),
     ),
 ]
@@ -135,6 +144,12 @@ def classify_by_keywords(message: str) -> IntentClassification:
         logger.info("Keyword fallback: no pattern matched, requesting clarification")
         return {"agent": None, "language": language, "confidence": 0.0}  # type: ignore[typeddict-item]
 
+    # Boost Mike for adversarial/security context (often overlaps with Harvey)
+    if "mike" in scores and any(
+        w in message.lower() for w in ("adversar", "red team", "prompt injection", "pentest", "vulnerab", "exploit")
+    ):
+        scores["mike"] = scores.get("mike", 0) + 3
+
     best_agent = max(scores, key=scores.get)  # type: ignore[arg-type]
     # Keyword confidence caps at 0.75 -- it is a heuristic, not LLM-grade
     confidence = min(0.75, 0.5 + 0.05 * scores[best_agent])
@@ -163,13 +178,16 @@ class DonnaRouter:
     ) -> None:
         self._ollama_host = ollama_host.rstrip("/")
         self._model = model
-        self._timeout = 5.0
+        self._timeout = 15.0
 
     async def classify(self, message: str) -> IntentClassification:
         """Classify user intent and detect language.
 
-        Calls Ollama with JSON mode for structured output. Falls back to
-        keyword-based classification on timeout or invalid response.
+        Strategy:
+        1. Fast keyword classification first (< 1ms)
+        2. If keywords match with confidence >= 0.5, use that result
+        3. If ambiguous, try Ollama for LLM-based classification
+        4. Ollama timeout/error falls back to keyword result
 
         Returns:
             IntentClassification with agent, language, and confidence.
@@ -179,12 +197,22 @@ class DonnaRouter:
 
         start = _time.monotonic()
         result: IntentClassification | None = None
+
+        # Step 1: Always try keywords first (instant)
+        keyword_result = classify_by_keywords(message)
+
+        # Step 2: If keywords matched, use them directly
+        if keyword_result.get("agent") is not None:
+            result = keyword_result
+            return result
+
+        # Step 3: Keywords didn't match — try Ollama for ambiguous messages
         try:
             result = await self._call_ollama(message)
             return result
         except (httpx.TimeoutException, httpx.ConnectError, httpx.HTTPStatusError) as exc:
-            logger.warning("Ollama error (%s: %s), falling back to keywords", type(exc).__name__, exc)
-            result = classify_by_keywords(message)
+            logger.warning("Ollama error (%s: %s), using keyword result", type(exc).__name__, exc)
+            result = keyword_result
             return result
         except (json.JSONDecodeError, KeyError, ValueError) as exc:
             logger.warning(
