@@ -14,6 +14,7 @@ import logging
 import tempfile
 import time
 from pathlib import Path
+from typing import Any
 
 import docker
 import docker.errors
@@ -208,6 +209,8 @@ class SandboxEngine:
                 detach=True,
             )
 
+            assert container is not None  # containers.create always returns a Container
+
             logger.info(
                 "Sandbox container %s created (image=%s, timeout=%ds)",
                 container.short_id,
@@ -221,7 +224,7 @@ class SandboxEngine:
             # --- Wait for completion or timeout --------------------------
             timed_out = False
             try:
-                wait_result: dict = await asyncio.to_thread(
+                wait_result: dict[str, Any] = await asyncio.to_thread(
                     container.wait,
                     timeout=timeout,
                 )
@@ -247,10 +250,14 @@ class SandboxEngine:
 
             # --- Collect stdout / stderr ---------------------------------
             stdout_bytes: bytes = await asyncio.to_thread(
-                container.logs, stdout=True, stderr=False,
+                container.logs,
+                stdout=True,
+                stderr=False,
             )
             stderr_bytes: bytes = await asyncio.to_thread(
-                container.logs, stdout=False, stderr=True,
+                container.logs,
+                stdout=False,
+                stderr=True,
             )
 
             # --- Collect output files from /workspace/output/ ------------

@@ -117,7 +117,9 @@ class TestCreateSearchBoe:
         await tool_fn.ainvoke({"query": "blanqueo de capitales", "k": 10})
 
         mock_retriever.retrieve.assert_called_once_with(
-            "blanqueo de capitales", k=10, filters=None,
+            "blanqueo de capitales",
+            k=10,
+            filters=None,
         )
 
     async def test_calls_retriever_with_filters(self, mock_retriever: MagicMock) -> None:
@@ -128,7 +130,9 @@ class TestCreateSearchBoe:
         await tool_fn.ainvoke({"query": "PBC", "k": 5, "filters": filters})
 
         mock_retriever.retrieve.assert_called_once_with(
-            "PBC", k=5, filters=filters,
+            "PBC",
+            k=5,
+            filters=filters,
         )
 
     async def test_returns_formatted_citations(self, mock_retriever: MagicMock) -> None:
@@ -151,7 +155,9 @@ class TestCreateSearchBoe:
         await tool_fn.ainvoke({"query": "test"})
 
         mock_retriever.retrieve.assert_called_once_with(
-            "test", k=20, filters=None,
+            "test",
+            k=20,
+            filters=None,
         )
 
     async def test_empty_results(self, mock_retriever: MagicMock) -> None:
@@ -277,7 +283,9 @@ class TestToolRegistry:
         result = await search_boe_tool.ainvoke({"query": "AML compliance"})
 
         mock_retriever.retrieve.assert_called_once_with(
-            "AML compliance", k=20, filters=None,
+            "AML compliance",
+            k=20,
+            filters=None,
         )
         assert isinstance(result, list)
         assert len(result) == 2
@@ -288,3 +296,160 @@ class TestToolRegistry:
             tools = registry.get_tools_for_agent(agent_name)
             tool_names = [getattr(t, "name", getattr(t, "__name__", repr(t))) for t in tools]
             assert "search_boe" in tool_names, f"{agent_name} missing search_boe"
+
+
+# ---------------------------------------------------------------------------
+# Tests: _wrap_impl_as_tool
+# ---------------------------------------------------------------------------
+
+
+class TestWrapImplAsTool:
+    """Tests for the _wrap_impl_as_tool helper function."""
+
+    def test_wraps_preserves_name_from_real_tool(self) -> None:
+        """Wrapped tool should keep the original tool's name."""
+        from fraudai.agents.tool_registry import _wrap_impl_as_tool
+        from fraudai.agents.tools import analyze_transactions
+
+        impl_method = AsyncMock(return_value={"result": "ok"})
+        wrapped = _wrap_impl_as_tool(analyze_transactions, impl_method)
+
+        assert wrapped.name == "analyze_transactions"
+
+    def test_wraps_preserves_description_from_real_tool(self) -> None:
+        """Wrapped tool should keep the original tool's description."""
+        from fraudai.agents.tool_registry import _wrap_impl_as_tool
+        from fraudai.agents.tools import detect_patterns
+
+        impl_method = AsyncMock(return_value={"result": "ok"})
+        wrapped = _wrap_impl_as_tool(detect_patterns, impl_method)
+
+        assert wrapped.description == detect_patterns.description
+
+    async def test_wraps_calls_impl_method(self) -> None:
+        """Wrapped tool should delegate invocation to the real impl method."""
+        from fraudai.agents.tool_registry import _wrap_impl_as_tool
+        from fraudai.agents.tools import risk_scoring
+
+        impl_method = AsyncMock(return_value={"risk_level": "high"})
+        wrapped = _wrap_impl_as_tool(risk_scoring, impl_method)
+
+        await wrapped.ainvoke({"data_path": "/tmp/test.csv"})
+
+        impl_method.assert_awaited_once()
+
+    def test_wraps_preserves_args_schema(self) -> None:
+        """Wrapped tool should preserve the stub's args_schema if present."""
+        from fraudai.agents.tool_registry import _wrap_impl_as_tool
+        from fraudai.agents.tools import graph_analysis
+
+        original_schema = graph_analysis.args_schema
+        impl_method = AsyncMock()
+        wrapped = _wrap_impl_as_tool(graph_analysis, impl_method)
+
+        assert wrapped.args_schema is original_schema
+
+
+# ---------------------------------------------------------------------------
+# Tests: ToolRegistry with ToolImplementations
+# ---------------------------------------------------------------------------
+
+
+class TestToolRegistryWithImplementations:
+    """Tests for ToolRegistry when ToolImplementations is provided."""
+
+    def test_get_impl_tool_returns_stub_when_no_impls(
+        self,
+        mock_retriever: MagicMock,
+    ) -> None:
+        """Without tool_impls, _get_impl_tool should return the stub unchanged."""
+        registry = ToolRegistry(retriever=mock_retriever, tool_impls=None)
+        stub = MagicMock()
+        stub.name = "analyze_transactions"
+
+        result = registry._get_impl_tool(stub)
+
+        assert result is stub
+
+    def test_get_impl_tool_returns_wrapped_when_impls_available(
+        self,
+        mock_retriever: MagicMock,
+    ) -> None:
+        """With tool_impls, _get_impl_tool should return a wrapped tool."""
+        mock_impls = MagicMock()
+        mock_impls.analyze_transactions = AsyncMock(return_value={"ok": True})
+
+        registry = ToolRegistry(
+            retriever=mock_retriever,
+            tool_impls=mock_impls,
+        )
+
+        from fraudai.agents.tools import analyze_transactions
+
+        wrapped = registry._get_impl_tool(analyze_transactions)
+
+        # Should not be the original stub
+        assert wrapped is not analyze_transactions
+        assert getattr(wrapped, "name", "") == "analyze_transactions"
+
+    def test_get_impl_tool_caches_wrapped_tool(
+        self,
+        mock_retriever: MagicMock,
+    ) -> None:
+        """Wrapped tools should be cached for the registry lifetime."""
+        mock_impls = MagicMock()
+        mock_impls.analyze_transactions = AsyncMock()
+
+        registry = ToolRegistry(
+            retriever=mock_retriever,
+            tool_impls=mock_impls,
+        )
+
+        from fraudai.agents.tools import analyze_transactions
+
+        first = registry._get_impl_tool(analyze_transactions)
+        second = registry._get_impl_tool(analyze_transactions)
+
+        assert first is second
+
+    def test_get_impl_tool_returns_stub_for_unknown_method(
+        self,
+        mock_retriever: MagicMock,
+    ) -> None:
+        """If tool_impls has no matching method, should return the stub."""
+        mock_impls = MagicMock(spec=[])  # Empty spec — no methods
+
+        registry = ToolRegistry(
+            retriever=mock_retriever,
+            tool_impls=mock_impls,
+        )
+
+        from fraudai.agents.tools import analyze_transactions
+
+        result = registry._get_impl_tool(analyze_transactions)
+
+        # getattr returns None for spec=[], so it falls back to stub
+        assert result is analyze_transactions
+
+    def test_get_tools_for_agent_with_impls(
+        self,
+        mock_retriever: MagicMock,
+    ) -> None:
+        """With tool_impls, get_tools_for_agent should return wrapped tools."""
+        mock_impls = MagicMock()
+        mock_impls.analyze_transactions = AsyncMock()
+        mock_impls.detect_patterns = AsyncMock()
+        mock_impls.risk_scoring = AsyncMock()
+        mock_impls.generate_rules = AsyncMock()
+
+        registry = ToolRegistry(
+            retriever=mock_retriever,
+            tool_impls=mock_impls,
+        )
+
+        tools = registry.get_tools_for_agent("harvey")
+
+        tool_names = [getattr(t, "name", getattr(t, "__name__", repr(t))) for t in tools]
+        assert "analyze_transactions" in tool_names
+        assert "search_boe" in tool_names
+        assert len(tools) == 5

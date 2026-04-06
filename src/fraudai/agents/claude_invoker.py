@@ -16,6 +16,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import AIMessage, SystemMessage
 
 if TYPE_CHECKING:
+    from fraudai.agents.graph import AgentInvocationResult
     from fraudai.agents.state import AgentState
 
 logger = logging.getLogger(__name__)
@@ -52,7 +53,7 @@ class ClaudeAgentInvoker:
         max_tokens: int = 4096,
         temperature: float = 0.3,
     ) -> None:
-        self._model = ChatAnthropic(
+        self._model = ChatAnthropic(  # type: ignore[call-arg]
             model=model,
             anthropic_api_key=api_key,
             max_tokens=max_tokens,
@@ -76,7 +77,7 @@ class ClaudeAgentInvoker:
         system_prompt: str,
         tools: list[Any],
         state: AgentState,
-    ) -> dict[str, Any]:
+    ) -> AgentInvocationResult:
         """Invoke Claude with agent personality, tools, and conversation history.
 
         Steps:
@@ -105,9 +106,7 @@ class ClaudeAgentInvoker:
         escalation = self._detect_escalation(content, agent_name)
 
         # Build analysis summary from tool results
-        analysis_summary = self._build_analysis_summary(
-            agent_name, content, tool_results
-        )
+        analysis_summary = self._build_analysis_summary(agent_name, content, tool_results)
 
         # Log token usage if available
         self._log_token_usage(ai_message, agent_name)
@@ -124,9 +123,7 @@ class ClaudeAgentInvoker:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _build_messages(
-        system_prompt: str, state: AgentState
-    ) -> list[Any]:
+    def _build_messages(system_prompt: str, state: AgentState) -> list[Any]:
         """Build the message list from system prompt and conversation history."""
         messages: list[Any] = [SystemMessage(content=system_prompt)]
         state_messages = state.get("messages") or []
@@ -156,14 +153,13 @@ class ClaudeAgentInvoker:
                     agent_name,
                     attempt,
                 )
-                return response  # type: ignore[return-value]
+                return response  # type: ignore[no-any-return]
             except Exception as exc:
                 last_error = exc
                 if attempt < _MAX_RETRIES:
                     delay = _RETRY_BASE_DELAY * (2 ** (attempt - 1))
                     logger.warning(
-                        "Agent '%s' invocation failed (attempt %d/%d): %s — "
-                        "retrying in %.1fs",
+                        "Agent '%s' invocation failed (attempt %d/%d): %s — retrying in %.1fs",
                         agent_name,
                         attempt,
                         _MAX_RETRIES,
@@ -207,43 +203,47 @@ class ClaudeAgentInvoker:
         results: list[dict[str, Any]] = []
         for call in tool_calls:
             tool_name = (
-                call.get("name", "") if isinstance(call, dict)
-                else getattr(call, "name", "")
+                call.get("name", "") if isinstance(call, dict) else getattr(call, "name", "")
             )
             tool_args = (
-                call.get("args", {}) if isinstance(call, dict)
-                else getattr(call, "args", {})
+                call.get("args", {}) if isinstance(call, dict) else getattr(call, "args", {})
             )
 
             if tool_name not in tool_map:
-                results.append({
-                    "tool_name": tool_name,
-                    "tool_input": tool_args,
-                    "tool_output": None,
-                    "status": "error",
-                    "error": f"Tool '{tool_name}' not found in agent tool list",
-                })
+                results.append(
+                    {
+                        "tool_name": tool_name,
+                        "tool_input": tool_args,
+                        "tool_output": None,
+                        "status": "error",
+                        "error": f"Tool '{tool_name}' not found in agent tool list",
+                    }
+                )
                 logger.warning("Tool '%s' not found in available tools", tool_name)
                 continue
 
             try:
                 tool_fn = tool_map[tool_name]
                 output = await tool_fn.ainvoke(tool_args)
-                results.append({
-                    "tool_name": tool_name,
-                    "tool_input": tool_args,
-                    "tool_output": output,
-                    "status": "success",
-                })
+                results.append(
+                    {
+                        "tool_name": tool_name,
+                        "tool_input": tool_args,
+                        "tool_output": output,
+                        "status": "success",
+                    }
+                )
                 logger.info("Tool '%s' executed successfully", tool_name)
             except Exception as exc:
-                results.append({
-                    "tool_name": tool_name,
-                    "tool_input": tool_args,
-                    "tool_output": None,
-                    "status": "error",
-                    "error": str(exc),
-                })
+                results.append(
+                    {
+                        "tool_name": tool_name,
+                        "tool_input": tool_args,
+                        "tool_output": None,
+                        "status": "error",
+                        "error": str(exc),
+                    }
+                )
                 logger.error("Tool '%s' execution failed: %s", tool_name, exc)
 
         return results
@@ -266,9 +266,7 @@ class ClaudeAgentInvoker:
         return str(content)
 
     @staticmethod
-    def _detect_escalation(
-        content: str, current_agent: str
-    ) -> dict[str, Any] | None:
+    def _detect_escalation(content: str, current_agent: str) -> dict[str, Any] | None:
         """Scan response content for escalation patterns.
 
         Returns an escalation dict if a pattern matches, otherwise ``None``.
@@ -312,9 +310,7 @@ class ClaudeAgentInvoker:
         success_count = sum(1 for r in tool_results if r.get("status") == "success")
 
         if tool_count > 0:
-            summary += (
-                f" [Tools: {success_count}/{tool_count} succeeded]"
-            )
+            summary += f" [Tools: {success_count}/{tool_count} succeeded]"
 
         return summary
 
@@ -323,11 +319,13 @@ class ClaudeAgentInvoker:
         usage = getattr(ai_message, "usage_metadata", None)
         if usage:
             input_tokens = (
-                usage.get("input_tokens", 0) if isinstance(usage, dict)
+                usage.get("input_tokens", 0)
+                if isinstance(usage, dict)
                 else getattr(usage, "input_tokens", 0)
             )
             output_tokens = (
-                usage.get("output_tokens", 0) if isinstance(usage, dict)
+                usage.get("output_tokens", 0)
+                if isinstance(usage, dict)
                 else getattr(usage, "output_tokens", 0)
             )
             total = input_tokens + output_tokens
@@ -340,6 +338,4 @@ class ClaudeAgentInvoker:
                 total,
             )
         else:
-            logger.debug(
-                "No token usage metadata available for agent '%s'", agent_name
-            )
+            logger.debug("No token usage metadata available for agent '%s'", agent_name)

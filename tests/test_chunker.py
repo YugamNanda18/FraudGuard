@@ -199,9 +199,7 @@ class TestChunkerLongArticle:
             token_count = len(chunk.text.split())
             # Each chunk should be reasonably close to the limit, with some
             # tolerance for prefix and indivisible paragraphs
-            assert token_count < 2500, (
-                f"Chunk has {token_count} tokens, expected under 2500"
-            )
+            assert token_count < 2500, f"Chunk has {token_count} tokens, expected under 2500"
 
     def test_all_sub_chunks_have_same_metadata(
         self, chunker: LegalChunker, long_doc: ExtractedDocument, doc_meta: BOEDocumentMeta
@@ -286,9 +284,7 @@ class TestChunkMetadata:
         art1 = next(c for c in chunks if c.metadata.articulo == "Art. 1")
         assert art1.metadata.seccion == "Titulo I, Capitulo I"
 
-    def test_empty_materia_when_none(
-        self, small_doc: ExtractedDocument
-    ) -> None:
+    def test_empty_materia_when_none(self, small_doc: ExtractedDocument) -> None:
         meta_no_materias = _make_doc_meta()
         meta_no_materias.materias = []
         chunker = LegalChunker()
@@ -305,9 +301,7 @@ class TestChunkMetadata:
 class TestChunkerEdgeCases:
     """Edge cases and boundary conditions."""
 
-    def test_empty_document(
-        self, chunker: LegalChunker, doc_meta: BOEDocumentMeta
-    ) -> None:
+    def test_empty_document(self, chunker: LegalChunker, doc_meta: BOEDocumentMeta) -> None:
         empty_doc = ExtractedDocument(titulo="Vacia", preambulo="", articulos=[], disposiciones=[])
         chunks = chunker.chunk_document(empty_doc, doc_meta)
         assert chunks == []

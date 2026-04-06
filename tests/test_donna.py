@@ -6,13 +6,12 @@ All tests mock httpx so no running Ollama instance is required.
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
 
 from fraudai.agents.donna import DonnaRouter, classify_by_keywords
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -24,9 +23,7 @@ def _make_ollama_response(agent: str, language: str, confidence: float) -> httpx
     body = {
         "message": {
             "role": "assistant",
-            "content": json.dumps(
-                {"agent": agent, "language": language, "confidence": confidence}
-            ),
+            "content": json.dumps({"agent": agent, "language": language, "confidence": confidence}),
         },
         "done": True,
     }
@@ -227,7 +224,9 @@ class TestOllamaInvalidJson:
             mock_client.__aexit__ = AsyncMock(return_value=False)
             mock_client_cls.return_value = mock_client
 
-            result = await router.classify("Investigate the network graph and community connections")
+            result = await router.classify(
+                "Investigate the network graph and community connections"
+            )
 
         assert result["agent"] == "jessica"
 
@@ -280,7 +279,9 @@ class TestKeywordFallback:
         assert result["agent"] == "louis"
 
     def test_jessica_keywords(self) -> None:
-        result = classify_by_keywords("Investigate the network graph and identify communities with typology matching")
+        result = classify_by_keywords(
+            "Investigate the network graph and identify communities with typology matching"
+        )
         assert result["agent"] == "jessica"
 
     def test_mike_keywords(self) -> None:

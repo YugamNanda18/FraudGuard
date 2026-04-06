@@ -6,7 +6,6 @@ import pytest
 
 from fraudai.ingestion.text_extractor import (
     BOETextExtractor,
-    ExtractedArticle,
     ExtractedDocument,
 )
 
@@ -191,9 +190,7 @@ class TestExtractorWithArticles:
 
     def test_disposicion_content(self, extractor: BOETextExtractor) -> None:
         doc = extractor.extract(BOE_HTML_LEY)
-        derogatoria = next(
-            d for d in doc.disposiciones if "derogatoria" in d.numero.lower()
-        )
+        derogatoria = next(d for d in doc.disposiciones if "derogatoria" in d.numero.lower())
         assert "Ley 19/1993" in derogatoria.contenido
 
     def test_anexos_extracted(self, extractor: BOETextExtractor) -> None:

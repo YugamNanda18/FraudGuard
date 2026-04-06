@@ -203,9 +203,7 @@ async def test_chat_with_existing_session(
     assert resp.json()["session_id"] == sid
 
 
-async def test_chat_with_agent_override(
-    client: httpx.AsyncClient, mock_graph: MagicMock
-) -> None:
+async def test_chat_with_agent_override(client: httpx.AsyncClient, mock_graph: MagicMock) -> None:
     """Chat with agent_override bypasses Donna."""
     resp = await client.post(
         "/api/v1/chat",
@@ -254,9 +252,7 @@ async def test_chat_records_turn(
 # ---------------------------------------------------------------------------
 
 
-async def test_chat_stream_returns_sse(
-    client: httpx.AsyncClient, mock_graph: MagicMock
-) -> None:
+async def test_chat_stream_returns_sse(client: httpx.AsyncClient, mock_graph: MagicMock) -> None:
     """Stream endpoint returns text/event-stream with SSE format."""
 
     # Mock astream_events as an async generator
@@ -653,9 +649,7 @@ async def test_submit_feedback_invalid_rating(client: httpx.AsyncClient) -> None
 # ---------------------------------------------------------------------------
 
 
-async def test_health_all_healthy(
-    client: httpx.AsyncClient, mock_store: MagicMock
-) -> None:
+async def test_health_all_healthy(client: httpx.AsyncClient, mock_store: MagicMock) -> None:
     """Health check returns 'healthy' when all services are up."""
     with patch("fraudai.api.routes.httpx_client.AsyncClient") as mock_httpx:
         mock_client_instance = AsyncMock()
@@ -684,9 +678,7 @@ async def test_health_all_healthy(
     assert data["corpus_version"] == "v2024.01"
 
 
-async def test_health_degraded(
-    client: httpx.AsyncClient, mock_store: MagicMock
-) -> None:
+async def test_health_degraded(client: httpx.AsyncClient, mock_store: MagicMock) -> None:
     """Health check returns 'degraded' when some services are down."""
     mock_store.health_check = AsyncMock(return_value=True)
 
@@ -707,9 +699,7 @@ async def test_health_degraded(
     assert data["qdrant"] is True
 
 
-async def test_health_unhealthy(
-    client: httpx.AsyncClient, mock_store: MagicMock
-) -> None:
+async def test_health_unhealthy(client: httpx.AsyncClient, mock_store: MagicMock) -> None:
     """Health check returns 'unhealthy' when all services are down."""
     mock_store.health_check = AsyncMock(return_value=False)
     mock_store.get_corpus_version = AsyncMock(side_effect=Exception("no connection"))
@@ -821,9 +811,7 @@ async def test_chat_with_citations_and_tools(
     assert data["tool_results"][0]["tool_name"] == "analyze_transactions"
 
 
-async def test_chat_language_parameter(
-    client: httpx.AsyncClient, mock_graph: MagicMock
-) -> None:
+async def test_chat_language_parameter(client: httpx.AsyncClient, mock_graph: MagicMock) -> None:
     """Chat passes language parameter to graph."""
     resp = await client.post(
         "/api/v1/chat",

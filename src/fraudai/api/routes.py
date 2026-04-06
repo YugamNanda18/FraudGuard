@@ -18,7 +18,7 @@ import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import httpx as httpx_client
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
@@ -44,6 +44,7 @@ from fraudai.core.config import settings
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
+    from langchain_core.runnables import RunnableConfig
     from langgraph.graph.state import CompiledStateGraph
 
     from fraudai.api.session_manager import SessionManager
@@ -61,24 +62,28 @@ ALLOWED_EXTENSIONS = {".csv", ".json", ".pdf", ".txt"}
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100 MB
 
 
-def _get_graph(request: Request) -> CompiledStateGraph:
+def _get_graph(request: Request) -> CompiledStateGraph:  # type: ignore[type-arg]
     """Extract the compiled graph from app state."""
-    return request.app.state.graph
+    graph: CompiledStateGraph = request.app.state.graph  # type: ignore[type-arg]
+    return graph
 
 
 def _get_store(request: Request) -> QdrantStore:
     """Extract the QdrantStore from app state."""
-    return request.app.state.store
+    store: QdrantStore = request.app.state.store
+    return store
 
 
 def _get_session_manager(request: Request) -> SessionManager:
     """Extract the SessionManager from app state."""
-    return request.app.state.session_manager
+    mgr: SessionManager = request.app.state.session_manager
+    return mgr
 
 
 def _get_feedback_store(request: Request) -> list[dict[str, Any]]:
     """Extract the feedback store from app state."""
-    return request.app.state.feedback_store
+    store: list[dict[str, Any]] = request.app.state.feedback_store
+    return store
 
 
 def _extract_citations(state: dict[str, Any]) -> list[Citation]:
@@ -154,9 +159,7 @@ async def chat(
     # Session management
     session_id = request_body.session_id
     if session_id is None:
-        session_id = session_mgr.create_session(
-            tenant_id=user.tenant_id, tier=user.tier
-        )
+        session_id = session_mgr.create_session(tenant_id=user.tenant_id, tier=user.tier)
     elif session_mgr.get_session(session_id) is None:
         # Session ID provided but not tracked -- register it
         from fraudai.api.session_manager import SessionData
@@ -180,7 +183,7 @@ async def chat(
     if request_body.agent_override is not None:
         input_state["current_agent"] = request_body.agent_override
 
-    config = {"configurable": {"thread_id": session_id}}
+    config = cast("RunnableConfig", {"configurable": {"thread_id": session_id}})
 
     try:
         final_state = await graph.ainvoke(input_state, config=config)
@@ -239,9 +242,7 @@ async def chat_stream(
     # Session management
     session_id = request_body.session_id
     if session_id is None:
-        session_id = session_mgr.create_session(
-            tenant_id=user.tenant_id, tier=user.tier
-        )
+        session_id = session_mgr.create_session(tenant_id=user.tenant_id, tier=user.tier)
 
     input_state: dict[str, Any] = {
         "messages": [HumanMessage(content=request_body.message)],
@@ -254,13 +255,11 @@ async def chat_stream(
     if request_body.agent_override is not None:
         input_state["current_agent"] = request_body.agent_override
 
-    config = {"configurable": {"thread_id": session_id}}
+    config = cast("RunnableConfig", {"configurable": {"thread_id": session_id}})
 
     async def event_generator() -> AsyncGenerator[str, None]:
         try:
-            async for event in graph.astream_events(
-                input_state, config=config, version="v2"
-            ):
+            async for event in graph.astream_events(input_state, config=config, version="v2"):
                 event_type = event.get("event", "")
 
                 if event_type == "on_chat_model_stream":
@@ -382,9 +381,7 @@ async def upload_file(
             session_id,
         )
     except Exception:
-        logger.exception(
-            "Failed to index file %s in session %s", file_id, session_id
-        )
+        logger.exception("Failed to index file %s in session %s", file_id, session_id)
 
     # Record in session
     session_mgr.record_upload(session_id, file_id)
@@ -414,31 +411,35 @@ def _simple_chunk(
 
     for para in paragraphs:
         if len(current_chunk) + len(para) > max_chunk_size and current_chunk:
-            chunks.append({
+            chunks.append(
+                {
+                    "text": current_chunk.strip(),
+                    "dense_vector": [0.0] * 1024,  # Placeholder -- real embeddings in production
+                    "sparse_vector": None,
+                    "metadata": {
+                        "file_id": file_id,
+                        "filename": filename,
+                        "chunk_index": len(chunks),
+                    },
+                }
+            )
+            current_chunk = para
+        else:
+            current_chunk = f"{current_chunk}\n\n{para}" if current_chunk else para
+
+    if current_chunk.strip():
+        chunks.append(
+            {
                 "text": current_chunk.strip(),
-                "dense_vector": [0.0] * 1024,  # Placeholder -- real embeddings in production
+                "dense_vector": [0.0] * 1024,
                 "sparse_vector": None,
                 "metadata": {
                     "file_id": file_id,
                     "filename": filename,
                     "chunk_index": len(chunks),
                 },
-            })
-            current_chunk = para
-        else:
-            current_chunk = f"{current_chunk}\n\n{para}" if current_chunk else para
-
-    if current_chunk.strip():
-        chunks.append({
-            "text": current_chunk.strip(),
-            "dense_vector": [0.0] * 1024,
-            "sparse_vector": None,
-            "metadata": {
-                "file_id": file_id,
-                "filename": filename,
-                "chunk_index": len(chunks),
-            },
-        })
+            }
+        )
 
     return chunks
 
@@ -556,7 +557,7 @@ async def confirm_action(
     start_time = time.monotonic()
 
     session_id = request_body.session_id
-    config = {"configurable": {"thread_id": session_id}}
+    config = cast("RunnableConfig", {"configurable": {"thread_id": session_id}})
 
     try:
         final_state = await graph.ainvoke(
@@ -564,9 +565,7 @@ async def confirm_action(
             config=config,
         )
     except Exception as exc:
-        logger.exception(
-            "Confirmation resume failed for session %s", session_id
-        )
+        logger.exception("Confirmation resume failed for session %s", session_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to process confirmation. The session may not have a pending action.",
@@ -610,7 +609,7 @@ async def submit_feedback(
     """
     feedback_store = _get_feedback_store(request)
 
-    entry = {
+    entry: dict[str, Any] = {
         "feedback_id": str(uuid.uuid4()),
         "session_id": request_body.session_id,
         "message_id": request_body.message_id,
@@ -629,7 +628,7 @@ async def submit_feedback(
         request_body.rating,
     )
 
-    return {"status": "accepted", "feedback_id": entry["feedback_id"]}
+    return {"status": "accepted", "feedback_id": str(entry["feedback_id"])}
 
 
 # ---------------------------------------------------------------------------

@@ -176,9 +176,7 @@ class BOETextExtractor:
 
         return paragraphs
 
-    def _parse_structure(
-        self, titulo: str, paragraphs: list[str]
-    ) -> ExtractedDocument:
+    def _parse_structure(self, titulo: str, paragraphs: list[str]) -> ExtractedDocument:
         """Walk paragraphs and classify them into structural components."""
         preambulo_parts: list[str] = []
         articulos: list[ExtractedArticle] = []
@@ -201,8 +199,12 @@ class BOETextExtractor:
             if m_anexo:
                 # Flush previous article
                 self._flush_article(
-                    current_article, articulos, disposiciones,
-                    current_titulo, current_capitulo, current_seccion_num,
+                    current_article,
+                    articulos,
+                    disposiciones,
+                    current_titulo,
+                    current_capitulo,
+                    current_seccion_num,
                 )
                 current_article = None
                 # Flush previous anexo
@@ -221,8 +223,12 @@ class BOETextExtractor:
             m_titulo = _RE_TITULO.match(paragraph)
             if m_titulo:
                 self._flush_article(
-                    current_article, articulos, disposiciones,
-                    current_titulo, current_capitulo, current_seccion_num,
+                    current_article,
+                    articulos,
+                    disposiciones,
+                    current_titulo,
+                    current_capitulo,
+                    current_seccion_num,
                 )
                 current_article = None
                 current_titulo = f"Titulo {m_titulo.group(1)}"
@@ -234,8 +240,12 @@ class BOETextExtractor:
             m_capitulo = _RE_CAPITULO.match(paragraph)
             if m_capitulo:
                 self._flush_article(
-                    current_article, articulos, disposiciones,
-                    current_titulo, current_capitulo, current_seccion_num,
+                    current_article,
+                    articulos,
+                    disposiciones,
+                    current_titulo,
+                    current_capitulo,
+                    current_seccion_num,
                 )
                 current_article = None
                 current_capitulo = f"Capitulo {m_capitulo.group(1)}"
@@ -245,8 +255,12 @@ class BOETextExtractor:
             m_seccion = _RE_SECCION.match(paragraph)
             if m_seccion:
                 self._flush_article(
-                    current_article, articulos, disposiciones,
-                    current_titulo, current_capitulo, current_seccion_num,
+                    current_article,
+                    articulos,
+                    disposiciones,
+                    current_titulo,
+                    current_capitulo,
+                    current_seccion_num,
                 )
                 current_article = None
                 current_seccion_num = f"Seccion {m_seccion.group(1)}"
@@ -256,14 +270,19 @@ class BOETextExtractor:
             m_disp = _RE_DISPOSICION.match(paragraph)
             if m_disp:
                 self._flush_article(
-                    current_article, articulos, disposiciones,
-                    current_titulo, current_capitulo, current_seccion_num,
+                    current_article,
+                    articulos,
+                    disposiciones,
+                    current_titulo,
+                    current_capitulo,
+                    current_seccion_num,
                 )
                 tipo = m_disp.group(1).lower()
                 nombre = m_disp.group(2).strip().rstrip(".")
                 numero = f"Disposicion {tipo} {nombre}"
                 current_article = _ArticleAccumulator(
-                    numero=numero, is_disposicion=True,
+                    numero=numero,
+                    is_disposicion=True,
                 )
                 in_preambulo = False
                 found_any_article = True
@@ -273,8 +292,12 @@ class BOETextExtractor:
             m_art = _RE_ARTICLE.match(paragraph)
             if m_art:
                 self._flush_article(
-                    current_article, articulos, disposiciones,
-                    current_titulo, current_capitulo, current_seccion_num,
+                    current_article,
+                    articulos,
+                    disposiciones,
+                    current_titulo,
+                    current_capitulo,
+                    current_seccion_num,
                 )
                 art_num = m_art.group(1).strip()
                 rest = m_art.group(2).strip().rstrip(".")
@@ -294,8 +317,12 @@ class BOETextExtractor:
 
         # Flush remaining
         self._flush_article(
-            current_article, articulos, disposiciones,
-            current_titulo, current_capitulo, current_seccion_num,
+            current_article,
+            articulos,
+            disposiciones,
+            current_titulo,
+            current_capitulo,
+            current_seccion_num,
         )
         if current_anexo_parts:
             anexos.append("\n\n".join(current_anexo_parts))
@@ -335,9 +362,7 @@ class BOETextExtractor:
         if acc is None:
             return
 
-        seccion_parts = [
-            p for p in (current_titulo, current_capitulo, current_seccion_num) if p
-        ]
+        seccion_parts = [p for p in (current_titulo, current_capitulo, current_seccion_num) if p]
         seccion = ", ".join(seccion_parts)
 
         article = ExtractedArticle(

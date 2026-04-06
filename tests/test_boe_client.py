@@ -12,7 +12,6 @@ from fraudai.ingestion.boe_client import (
     BOEClient,
     BOEClientError,
     BOEDocument,
-    BOEDocumentMeta,
     BOENotFoundError,
     BOESearchResult,
     BOESummary,
@@ -44,15 +43,19 @@ SEARCH_ITEM_RAW = {
     "url_html_consolidada": "https://www.boe.es/buscar/act.php?id=BOE-A-2010-6737",
 }
 
-SEARCH_RESPONSE_JSON = json.dumps({
-    "status": {"code": "200", "text": "ok"},
-    "data": [SEARCH_ITEM_RAW],
-}).encode()
+SEARCH_RESPONSE_JSON = json.dumps(
+    {
+        "status": {"code": "200", "text": "ok"},
+        "data": [SEARCH_ITEM_RAW],
+    }
+).encode()
 
-SEARCH_EMPTY_RESPONSE_JSON = json.dumps({
-    "status": {"code": "200", "text": "ok"},
-    "data": "",
-}).encode()
+SEARCH_EMPTY_RESPONSE_JSON = json.dumps(
+    {
+        "status": {"code": "200", "text": "ok"},
+        "data": "",
+    }
+).encode()
 
 DOCUMENT_XML = b"""\
 <?xml version="1.0" encoding="UTF-8"?>
@@ -103,55 +106,60 @@ DOCUMENT_XML = b"""\
 </documento>
 """
 
-SUMMARY_RESPONSE_JSON = json.dumps({
-    "status": {"code": "200", "text": "ok"},
-    "data": {
-        "sumario": {
-            "metadatos": {
-                "publicacion": "BOE",
-                "fecha_publicacion": "20250101",
-            },
-            "diario": [
-                {
-                    "numero": "1",
-                    "sumario_diario": {
-                        "identificador": "BOE-S-2025-1",
-                        "url_pdf": {
-                            "szBytes": "239991",
-                            "texto": "https://www.boe.es/boe/dias/2025/01/01/pdfs/BOE-S-2025-1.pdf",
-                        },
-                    },
-                    "seccion": [
-                        {
-                            "codigo": "1",
-                            "nombre": "I. Disposiciones generales",
-                            "departamento": {
-                                "codigo": "8162",
-                                "nombre": "COMUNITAT VALENCIANA",
-                                "texto": {
-                                    "epigrafe": [
-                                        {
-                                            "nombre": "Simplificacion administrativa",
-                                            "item": {
-                                                "identificador": "BOE-A-2025-1",
-                                                "titulo": "Ley 6/2024, de simplificacion administrativa.",
-                                                "url_pdf": {
-                                                    "szBytes": "2245004",
-                                                    "texto": "https://www.boe.es/boe/dias/2025/01/01/pdfs/BOE-A-2025-1.pdf",
-                                                },
-                                                "url_html": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-1",
-                                            },
-                                        }
-                                    ]
-                                },
+SUMMARY_RESPONSE_JSON = json.dumps(
+    {
+        "status": {"code": "200", "text": "ok"},
+        "data": {
+            "sumario": {
+                "metadatos": {
+                    "publicacion": "BOE",
+                    "fecha_publicacion": "20250101",
+                },
+                "diario": [
+                    {
+                        "numero": "1",
+                        "sumario_diario": {
+                            "identificador": "BOE-S-2025-1",
+                            "url_pdf": {
+                                "szBytes": "239991",
+                                "texto": "https://www.boe.es/boe/dias/2025/01/01/pdfs/BOE-S-2025-1.pdf",
                             },
-                        }
-                    ],
-                }
-            ],
-        }
-    },
-}).encode()
+                        },
+                        "seccion": [
+                            {
+                                "codigo": "1",
+                                "nombre": "I. Disposiciones generales",
+                                "departamento": {
+                                    "codigo": "8162",
+                                    "nombre": "COMUNITAT VALENCIANA",
+                                    "texto": {
+                                        "epigrafe": [
+                                            {
+                                                "nombre": "Simplificacion administrativa",
+                                                "item": {
+                                                    "identificador": "BOE-A-2025-1",
+                                                    "titulo": (
+                                                        "Ley 6/2024, de simplificacion"
+                                                        " administrativa."
+                                                    ),
+                                                    "url_pdf": {
+                                                        "szBytes": "2245004",
+                                                        "texto": "https://www.boe.es/boe/dias/2025/01/01/pdfs/BOE-A-2025-1.pdf",
+                                                    },
+                                                    "url_html": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-1",
+                                                },
+                                            }
+                                        ]
+                                    },
+                                },
+                            }
+                        ],
+                    }
+                ],
+            }
+        },
+    }
+).encode()
 
 
 # ---------------------------------------------------------------------------
@@ -168,9 +176,7 @@ def _make_transport(
     )
 
 
-def _build_client(
-    transport: httpx.MockTransport, **kwargs: object
-) -> BOEClient:
+def _build_client(transport: httpx.MockTransport, **kwargs: object) -> BOEClient:
     http_client = httpx.AsyncClient(transport=transport)
     kwargs.setdefault("max_retries", 1)
     return BOEClient(client=http_client, **kwargs)
@@ -183,9 +189,7 @@ def _build_client(
 
 @pytest.mark.asyncio
 async def test_search_legislation_returns_parsed_items() -> None:
-    transport = httpx.MockTransport(
-        lambda req: httpx.Response(200, content=SEARCH_RESPONSE_JSON)
-    )
+    transport = httpx.MockTransport(lambda req: httpx.Response(200, content=SEARCH_RESPONSE_JSON))
     async with _build_client(transport) as client:
         result = await client.search_legislation(offset=0, limit=50)
 
@@ -200,9 +204,7 @@ async def test_search_legislation_returns_parsed_items() -> None:
 
 @pytest.mark.asyncio
 async def test_search_legislation_client_side_materia_filter() -> None:
-    transport = httpx.MockTransport(
-        lambda req: httpx.Response(200, content=SEARCH_RESPONSE_JSON)
-    )
+    transport = httpx.MockTransport(lambda req: httpx.Response(200, content=SEARCH_RESPONSE_JSON))
     async with _build_client(transport) as client:
         result = await client.search_legislation(materias=["blanqueo"])
         assert len(result.items) == 1
@@ -213,9 +215,7 @@ async def test_search_legislation_client_side_materia_filter() -> None:
 
 @pytest.mark.asyncio
 async def test_search_legislation_text_query_filter() -> None:
-    transport = httpx.MockTransport(
-        lambda req: httpx.Response(200, content=SEARCH_RESPONSE_JSON)
-    )
+    transport = httpx.MockTransport(lambda req: httpx.Response(200, content=SEARCH_RESPONSE_JSON))
     async with _build_client(transport) as client:
         result = await client.search_legislation(text_query="terrorismo")
         assert len(result.items) == 1
@@ -226,9 +226,7 @@ async def test_search_legislation_text_query_filter() -> None:
 
 @pytest.mark.asyncio
 async def test_search_legislation_date_filters() -> None:
-    transport = httpx.MockTransport(
-        lambda req: httpx.Response(200, content=SEARCH_RESPONSE_JSON)
-    )
+    transport = httpx.MockTransport(lambda req: httpx.Response(200, content=SEARCH_RESPONSE_JSON))
     async with _build_client(transport) as client:
         result = await client.search_legislation(date_from="20100101", date_to="20101231")
         assert len(result.items) == 1
@@ -240,13 +238,13 @@ async def test_search_legislation_date_filters() -> None:
 @pytest.mark.asyncio
 async def test_search_has_more_flag() -> None:
     # When API returns exactly `limit` items, has_more should be True
-    two_items = json.dumps({
-        "status": {"code": "200", "text": "ok"},
-        "data": [SEARCH_ITEM_RAW, SEARCH_ITEM_RAW],
-    }).encode()
-    transport = httpx.MockTransport(
-        lambda req: httpx.Response(200, content=two_items)
-    )
+    two_items = json.dumps(
+        {
+            "status": {"code": "200", "text": "ok"},
+            "data": [SEARCH_ITEM_RAW, SEARCH_ITEM_RAW],
+        }
+    ).encode()
+    transport = httpx.MockTransport(lambda req: httpx.Response(200, content=two_items))
     async with _build_client(transport) as client:
         result = await client.search_legislation(limit=2)
         assert result.has_more is True
@@ -259,9 +257,7 @@ async def test_search_has_more_flag() -> None:
 
 @pytest.mark.asyncio
 async def test_get_document_parses_xml() -> None:
-    transport = httpx.MockTransport(
-        lambda req: httpx.Response(200, content=DOCUMENT_XML)
-    )
+    transport = httpx.MockTransport(lambda req: httpx.Response(200, content=DOCUMENT_XML))
     async with _build_client(transport) as client:
         doc = await client.get_document("BOE-A-2010-6737")
 
@@ -279,9 +275,7 @@ async def test_get_document_parses_xml() -> None:
 
 @pytest.mark.asyncio
 async def test_get_document_text_returns_string() -> None:
-    transport = httpx.MockTransport(
-        lambda req: httpx.Response(200, content=DOCUMENT_XML)
-    )
+    transport = httpx.MockTransport(lambda req: httpx.Response(200, content=DOCUMENT_XML))
     async with _build_client(transport) as client:
         text = await client.get_document_text("BOE-A-2010-6737")
 
@@ -297,9 +291,7 @@ async def test_get_document_text_returns_string() -> None:
 
 @pytest.mark.asyncio
 async def test_get_summary_parses_response() -> None:
-    transport = httpx.MockTransport(
-        lambda req: httpx.Response(200, content=SUMMARY_RESPONSE_JSON)
-    )
+    transport = httpx.MockTransport(lambda req: httpx.Response(200, content=SUMMARY_RESPONSE_JSON))
     async with _build_client(transport) as client:
         summary = await client.get_summary("20250101")
 
@@ -344,9 +336,7 @@ async def test_get_summaries_range_skips_missing_dates() -> None:
 
 @pytest.mark.asyncio
 async def test_404_raises_not_found() -> None:
-    transport = httpx.MockTransport(
-        lambda req: httpx.Response(404, text="Not Found")
-    )
+    transport = httpx.MockTransport(lambda req: httpx.Response(404, text="Not Found"))
     async with _build_client(transport) as client:
         with pytest.raises(BOENotFoundError):
             await client.search_legislation()
@@ -481,9 +471,6 @@ async def test_semaphore_limits_concurrency() -> None:
 
 @pytest.mark.asyncio
 async def test_context_manager_closes_internal_client() -> None:
-    transport = httpx.MockTransport(
-        lambda req: httpx.Response(200, json={"status": {"code": "200"}, "data": []})
-    )
     # Create client WITHOUT passing external httpx client so close() actually closes it
     client = BOEClient(max_retries=1)
     async with client:

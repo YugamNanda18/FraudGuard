@@ -22,9 +22,10 @@ class IntentClassification(TypedDict):
     graph.py imports DonnaRouter from this module.
     """
 
-    agent: str       # "harvey" | "louis" | "jessica" | "mike" | "rachel" | None
-    language: str    # "es" | "en"
+    agent: str  # "harvey" | "louis" | "jessica" | "mike" | "rachel" | None
+    language: str  # "es" | "en"
     confidence: float  # 0.0 - 1.0
+
 
 logger = logging.getLogger(__name__)
 

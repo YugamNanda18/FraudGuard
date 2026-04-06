@@ -6,13 +6,12 @@ tests run without network or GPU access.
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from fraudai.ingestion.boe_client import BOEDocument, BOEDocumentMeta, BOEReference
+from fraudai.ingestion.boe_client import BOEDocument, BOEDocumentMeta
 from fraudai.ingestion.pipeline import BOEIngestionPipeline, PipelineResult
-
 
 # ---------------------------------------------------------------------------
 # Fixtures: fake data
@@ -81,10 +80,12 @@ def _make_fake_chunks(n: int = 3) -> list[_FakeLegalChunk]:
             fecha_consolidacion="",
             estado_consolidacion="Finalizado",
         )
-        chunks.append(_FakeLegalChunk(
-            text=f"Chunk text number {i + 1} about anti-money laundering.",
-            metadata=meta,
-        ))
+        chunks.append(
+            _FakeLegalChunk(
+                text=f"Chunk text number {i + 1} about anti-money laundering.",
+                metadata=meta,
+            )
+        )
     return chunks
 
 

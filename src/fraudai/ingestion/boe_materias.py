@@ -205,7 +205,10 @@ MATERIAS_TECNOLOGIA: dict[str, str] = {
     "2980": "Direccion General de Telecomunicaciones",
     "2981": "Direccion General de Telecomunicaciones y Tecnologias de la Informacion",
     "1239": "Comisiones de Tecnologias de la Informacion y de las Telecomunicaciones",
-    "2224": "Cuerpo Superior de Sistemas y Tecnologias de la Informacion de la Administracion del Estado",
+    "2224": (
+        "Cuerpo Superior de Sistemas y Tecnologias"
+        " de la Informacion de la Administracion del Estado"
+    ),
 }
 
 # --- Consumidores y usuarios (contexto financiero) ---

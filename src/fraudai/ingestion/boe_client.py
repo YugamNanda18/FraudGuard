@@ -206,28 +206,20 @@ class BOEClient:
                     if attempt < self._max_retries:
                         await asyncio.sleep(wait)
 
-            raise BOEClientError(
-                f"Request failed after {self._max_retries} retries"
-            ) from last_exc
+            raise BOEClientError(f"Request failed after {self._max_retries} retries") from last_exc
 
-    async def _get_json(
-        self, url: str, params: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    async def _get_json(self, url: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         resp = await self._request("GET", url, params=params)
         data: dict[str, Any] = resp.json()
         status_code = data.get("status", {}).get("code", "200")
         if status_code == "404":
             raise BOENotFoundError(f"API returned 404: {url}")
         if status_code not in ("200", "201"):
-            raise BOEClientError(
-                f"API error {status_code}: {data.get('status', {}).get('text')}"
-            )
+            raise BOEClientError(f"API error {status_code}: {data.get('status', {}).get('text')}")
         return data
 
     async def _get_xml(self, url: str, params: dict[str, Any] | None = None) -> str:
-        resp = await self._request(
-            "GET", url, params=params, headers={"Accept": "application/xml"}
-        )
+        resp = await self._request("GET", url, params=params, headers={"Accept": "application/xml"})
         return resp.text
 
     # ------------------------------------------------------------------
@@ -266,11 +258,7 @@ class BOEClient:
         # Client-side filters for fields not natively filterable
         if materias:
             lower_materias = [m.lower() for m in materias]
-            items = [
-                it
-                for it in items
-                if any(m in it.titulo.lower() for m in lower_materias)
-            ]
+            items = [it for it in items if any(m in it.titulo.lower() for m in lower_materias)]
         if text_query:
             q_lower = text_query.lower()
             items = [it for it in items if q_lower in it.titulo.lower()]
@@ -280,25 +268,33 @@ class BOEClient:
             items = [it for it in items if it.fecha_publicacion <= date_to]
 
         has_more = len(raw_items) == limit
-        return BOESearchResult(
-            items=items, offset=offset, limit=limit, has_more=has_more
-        )
+        return BOESearchResult(items=items, offset=offset, limit=limit, has_more=has_more)
+
+    @staticmethod
+    def _extract_text_or_str(raw: dict[str, Any], key: str) -> str:
+        """Extract ``texto`` from a nested dict field or coerce to str."""
+        value = raw.get(key)
+        if isinstance(value, dict):
+            result: str = value.get("texto", "")
+            return result
+        return str(value) if value is not None else ""
 
     @staticmethod
     def _parse_search_item(raw: dict[str, Any]) -> BOEDocumentMeta:
+        _ext = BOEClient._extract_text_or_str
         return BOEDocumentMeta(
             identificador=raw.get("identificador", ""),
             titulo=raw.get("titulo", ""),
             fecha_publicacion=raw.get("fecha_publicacion", ""),
             fecha_disposicion=raw.get("fecha_disposicion", ""),
-            rango=raw.get("rango", {}).get("texto", "") if isinstance(raw.get("rango"), dict) else str(raw.get("rango", "")),
-            departamento=raw.get("departamento", {}).get("texto", "") if isinstance(raw.get("departamento"), dict) else str(raw.get("departamento", "")),
+            rango=_ext(raw, "rango"),
+            departamento=_ext(raw, "departamento"),
             url_eli=raw.get("url_eli", ""),
             url_html=raw.get("url_html_consolidada", ""),
-            ambito=raw.get("ambito", {}).get("texto", "") if isinstance(raw.get("ambito"), dict) else str(raw.get("ambito", "")),
+            ambito=_ext(raw, "ambito"),
             fecha_vigencia=raw.get("fecha_vigencia", ""),
             vigencia_agotada=raw.get("vigencia_agotada", "N"),
-            estado_consolidacion=raw.get("estado_consolidacion", {}).get("texto", "") if isinstance(raw.get("estado_consolidacion"), dict) else str(raw.get("estado_consolidacion", "")),
+            estado_consolidacion=_ext(raw, "estado_consolidacion"),
         )
 
     # ------------------------------------------------------------------
@@ -354,10 +350,12 @@ class BOEClient:
         analisis = root.find("analisis")
         if analisis is not None:
             for mat in analisis.findall(".//materia"):
-                materias.append({
-                    "codigo": mat.get("codigo", ""),
-                    "texto": (mat.text or "").strip(),
-                })
+                materias.append(
+                    {
+                        "codigo": mat.get("codigo", ""),
+                        "texto": (mat.text or "").strip(),
+                    }
+                )
             meta.materias = [m["texto"] for m in materias if m["texto"]]
 
         # Notas
@@ -374,18 +372,22 @@ class BOEClient:
         if analisis is not None:
             for ref_el in analisis.findall(".//anteriores/anterior"):
                 palabra_el = ref_el.find("palabra")
-                refs_ant.append(BOEReference(
-                    referencia=ref_el.get("referencia", ""),
-                    tipo=(palabra_el.text or "").strip() if palabra_el is not None else "",
-                    texto=_text(ref_el, "texto"),
-                ))
+                refs_ant.append(
+                    BOEReference(
+                        referencia=ref_el.get("referencia", ""),
+                        tipo=(palabra_el.text or "").strip() if palabra_el is not None else "",
+                        texto=_text(ref_el, "texto"),
+                    )
+                )
             for ref_el in analisis.findall(".//posteriores/posterior"):
                 palabra_el = ref_el.find("palabra")
-                refs_post.append(BOEReference(
-                    referencia=ref_el.get("referencia", ""),
-                    tipo=(palabra_el.text or "").strip() if palabra_el is not None else "",
-                    texto=_text(ref_el, "texto"),
-                ))
+                refs_post.append(
+                    BOEReference(
+                        referencia=ref_el.get("referencia", ""),
+                        tipo=(palabra_el.text or "").strip() if palabra_el is not None else "",
+                        texto=_text(ref_el, "texto"),
+                    )
+                )
 
         # Texto
         texto_el = root.find("texto")
@@ -466,16 +468,22 @@ class BOEClient:
 
                         for item in items_raw:
                             url_pdf_obj = item.get("url_pdf", {})
-                            url_pdf = url_pdf_obj.get("texto", "") if isinstance(url_pdf_obj, dict) else str(url_pdf_obj)
+                            url_pdf = (
+                                url_pdf_obj.get("texto", "")
+                                if isinstance(url_pdf_obj, dict)
+                                else str(url_pdf_obj)
+                            )
 
-                            disposiciones.append(BOESummaryItem(
-                                identificador=item.get("identificador", ""),
-                                titulo=item.get("titulo", ""),
-                                url_pdf=url_pdf,
-                                url_html=item.get("url_html", ""),
-                                seccion=seccion_nombre,
-                                departamento=depto_nombre,
-                            ))
+                            disposiciones.append(
+                                BOESummaryItem(
+                                    identificador=item.get("identificador", ""),
+                                    titulo=item.get("titulo", ""),
+                                    url_pdf=url_pdf,
+                                    url_html=item.get("url_html", ""),
+                                    seccion=seccion_nombre,
+                                    departamento=depto_nombre,
+                                )
+                            )
 
         return BOESummary(
             fecha=fecha,
@@ -483,9 +491,7 @@ class BOEClient:
             disposiciones=disposiciones,
         )
 
-    async def get_summaries_range(
-        self, date_from: str, date_to: str
-    ) -> list[BOESummary]:
+    async def get_summaries_range(self, date_from: str, date_to: str) -> list[BOESummary]:
         """Fetch summaries for a date range (AAAAMMDD format).
 
         Skips dates that return 404 (weekends, holidays with no BOE).

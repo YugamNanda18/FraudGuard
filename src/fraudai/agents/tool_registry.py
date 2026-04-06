@@ -62,7 +62,7 @@ logger = logging.getLogger(__name__)
 # Agent -> tool names mapping (search_boe is injected separately)
 # ---------------------------------------------------------------------------
 
-_AGENT_STATIC_TOOLS: dict[str, list[Callable[..., Any]]] = {
+_AGENT_STATIC_TOOLS: dict[str, list[Any]] = {
     "harvey": [analyze_transactions, detect_patterns, risk_scoring, generate_rules],
     "louis": [generate_sar_report, compliance_checklist],
     "jessica": [graph_analysis],
@@ -107,19 +107,21 @@ def _wrap_impl_as_tool(
     Returns:
         A new LangChain tool with the same metadata but real execution.
     """
-    tool_name = getattr(stub_tool, "name", stub_tool.__name__)
-    tool_description = getattr(stub_tool, "description", stub_tool.__doc__ or "")
+    tool_name = getattr(stub_tool, "name", None) or getattr(stub_tool, "__name__", "unknown_tool")
+    tool_description = (
+        getattr(stub_tool, "description", None) or getattr(stub_tool, "__doc__", "") or ""
+    )
 
-    @langchain_tool(name=tool_name, description=tool_description)
+    @langchain_tool(tool_name, description=tool_description)  # type: ignore[operator,arg-type]
     @functools.wraps(impl_method)
     async def _wrapped(**kwargs: Any) -> Any:
         return await impl_method(**kwargs)
 
     # Preserve the args_schema from the stub if available
     if hasattr(stub_tool, "args_schema") and stub_tool.args_schema is not None:
-        _wrapped.args_schema = stub_tool.args_schema  # type: ignore[attr-defined]
+        _wrapped.args_schema = stub_tool.args_schema
 
-    return _wrapped
+    return _wrapped  # type: ignore[no-any-return]
 
 
 class ToolRegistry:
@@ -173,7 +175,7 @@ class ToolRegistry:
             logger.debug("Created search_boe tool bound to retriever")
         return self._search_boe
 
-    def _get_impl_tool(self, stub_tool: Any) -> Callable[..., Any]:
+    def _get_impl_tool(self, stub_tool: Any) -> Any:
         """Return an implementation-backed tool for the given stub.
 
         If ``ToolImplementations`` is available and has a method for this
@@ -197,7 +199,8 @@ class ToolRegistry:
         if impl_method is None:
             logger.warning(
                 "ToolImplementations has no method '%s' for tool '%s'",
-                method_name, tool_name,
+                method_name,
+                tool_name,
             )
             return stub_tool
 
@@ -229,16 +232,11 @@ class ToolRegistry:
         key = agent_name.lower()
 
         if key not in _AGENT_STATIC_TOOLS:
-            msg = (
-                f"Unknown agent '{agent_name}'. "
-                f"Valid agents: {sorted(_AGENT_STATIC_TOOLS)}"
-            )
+            msg = f"Unknown agent '{agent_name}'. Valid agents: {sorted(_AGENT_STATIC_TOOLS)}"
             raise ValueError(msg)
 
         # Replace stubs with implementations where available
-        tools: list[Callable[..., Any]] = [
-            self._get_impl_tool(t) for t in _AGENT_STATIC_TOOLS[key]
-        ]
+        tools: list[Callable[..., Any]] = [self._get_impl_tool(t) for t in _AGENT_STATIC_TOOLS[key]]
 
         if key in _AGENTS_WITH_SEARCH_BOE:
             tools.append(self.get_search_boe())

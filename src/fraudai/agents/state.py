@@ -25,10 +25,7 @@ class AgentState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
 
     # Currently active agent
-    current_agent: (
-        Literal["donna", "harvey", "louis", "jessica", "mike", "rachel"]
-        | None
-    )
+    current_agent: Literal["donna", "harvey", "louis", "jessica", "mike", "rachel"] | None
 
     # Previous agent (for escalation and return tracking)
     previous_agent: str | None

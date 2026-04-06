@@ -256,7 +256,8 @@ class QdrantStore:
                         match=models.MatchValue(value=value),
                     ),
                 )
-        return models.Filter(must=conditions)
+        # list[FieldCondition] is a subtype but list is invariant in mypy
+        return models.Filter(must=conditions)  # type: ignore[arg-type]
 
     @staticmethod
     def _format_results(

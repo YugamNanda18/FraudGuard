@@ -88,7 +88,7 @@ class Reranker:
         assert self._cross_encoder is not None
 
         pairs = [[query, doc.text] for doc in documents]
-        scores = self._cross_encoder.predict(pairs)  # type: ignore[union-attr]
+        scores = self._cross_encoder.predict(pairs)  # type: ignore[attr-defined]
 
         # Pair each document with its reranker score.
         scored = list(zip(scores, documents, strict=True))

@@ -168,6 +168,7 @@ class TestAnalyzeTransactions:
         """analyze_transactions should return error dict for missing file."""
         import tempfile
         from pathlib import Path as _Path
+
         fake_path = str(_Path(tempfile.gettempdir()) / "nonexistent_file.csv")
         result = await tool_impls.analyze_transactions(fake_path)
 

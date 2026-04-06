@@ -84,35 +84,23 @@ class LegalChunker:
 
         # Preamble
         if doc.preambulo:
-            chunks.extend(
-                self._chunk_preambulo(doc.preambulo, doc.titulo, base_meta)
-            )
+            chunks.extend(self._chunk_preambulo(doc.preambulo, doc.titulo, base_meta))
 
         # Articles
         for art in doc.articulos:
-            chunks.extend(
-                self._chunk_article(art, doc.titulo, base_meta)
-            )
+            chunks.extend(self._chunk_article(art, doc.titulo, base_meta))
 
         # Dispositions
         for disp in doc.disposiciones:
-            chunks.extend(
-                self._chunk_article(disp, doc.titulo, base_meta)
-            )
+            chunks.extend(self._chunk_article(disp, doc.titulo, base_meta))
 
         # Annexes
         for idx, anexo_text in enumerate(doc.anexos, start=1):
-            meta = base_meta.model_copy(
-                update={"articulo": f"Anexo {idx}", "seccion": ""}
-            )
+            meta = base_meta.model_copy(update={"articulo": f"Anexo {idx}", "seccion": ""})
             prefix = self._context_prefix(doc.titulo, "", f"Anexo {idx}")
-            chunks.extend(
-                self._split_long_text(anexo_text, prefix, meta)
-            )
+            chunks.extend(self._split_long_text(anexo_text, prefix, meta))
 
-        logger.info(
-            "Chunked document %s into %d chunks", doc_meta.identificador, len(chunks)
-        )
+        logger.info("Chunked document %s into %d chunks", doc_meta.identificador, len(chunks))
         return chunks
 
     # ------------------------------------------------------------------
@@ -149,9 +137,7 @@ class LegalChunker:
         base_meta: ChunkMetadata,
     ) -> list[LegalChunk]:
         """Chunk the preamble by long paragraphs."""
-        meta = base_meta.model_copy(
-            update={"articulo": "Preambulo", "seccion": ""}
-        )
+        meta = base_meta.model_copy(update={"articulo": "Preambulo", "seccion": ""})
         prefix = self._context_prefix(norma_titulo, "", "Preambulo")
         return self._split_long_text(preambulo, prefix, meta)
 
@@ -169,9 +155,7 @@ class LegalChunker:
             }
         )
 
-        prefix = self._context_prefix(
-            norma_titulo, article.seccion, article.numero
-        )
+        prefix = self._context_prefix(norma_titulo, article.seccion, article.numero)
 
         # Build the full article text including title
         parts: list[str] = []
@@ -248,9 +232,7 @@ class LegalChunker:
         return body
 
     @staticmethod
-    def _context_prefix(
-        norma_titulo: str, seccion: str, articulo: str
-    ) -> str:
+    def _context_prefix(norma_titulo: str, seccion: str, articulo: str) -> str:
         """Build the context prefix string: ``[Ley 10/2010 -- Titulo III -- Capitulo II]``."""
         parts = [p for p in (norma_titulo, seccion, articulo) if p]
         return f"[{' -- '.join(parts)}]"

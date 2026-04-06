@@ -31,7 +31,7 @@ class FraudAgent(ABC):
         self,
         name: str,
         system_prompt: str,
-        tools: list,
+        tools: list[Any],
     ) -> None:
         self.name = name
         self.system_prompt = system_prompt

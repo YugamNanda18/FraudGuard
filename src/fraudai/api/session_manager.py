@@ -72,9 +72,7 @@ class SessionManager:
         """Record an agent turn in the session history."""
         session = self._sessions.get(session_id)
         if session is None:
-            logger.warning(
-                "record_turn called for unknown session: %s", session_id
-            )
+            logger.warning("record_turn called for unknown session: %s", session_id)
             return
         session.agent_history.append(agent)
         session.turn_count += 1
@@ -83,9 +81,7 @@ class SessionManager:
         """Record a file upload in the session."""
         session = self._sessions.get(session_id)
         if session is None:
-            logger.warning(
-                "record_upload called for unknown session: %s", session_id
-            )
+            logger.warning("record_upload called for unknown session: %s", session_id)
             return
         session.uploaded_files.append(filename)
 
@@ -93,6 +89,4 @@ class SessionManager:
         """List all sessions, optionally filtered by tenant."""
         if tenant_id is None:
             return list(self._sessions.values())
-        return [
-            s for s in self._sessions.values() if s.tenant_id == tenant_id
-        ]
+        return [s for s in self._sessions.values() if s.tenant_id == tenant_id]

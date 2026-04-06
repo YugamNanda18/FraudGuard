@@ -44,7 +44,7 @@ __all__ = ["IntentClassification"]
 class AgentInvocationResult(TypedDict):
     """Return contract for invoke_claude_agent."""
 
-    message: Any             # AIMessage
+    message: Any  # AIMessage
     tool_results: list[dict[str, Any]]
     analysis_summary: str | None
     escalation: dict[str, Any] | None
@@ -96,7 +96,7 @@ def _get_claude_invoker() -> ClaudeAgentInvoker:
 async def invoke_claude_agent(
     agent_name: str,
     system_prompt: str,
-    tools: list,
+    tools: list[Any],
     state: AgentState,
 ) -> AgentInvocationResult:
     """Invoke a Claude-backed specialist agent.
@@ -166,7 +166,8 @@ async def donna_router_node(state: AgentState) -> dict[str, Any]:
     classification into one of five specialist categories.
     """
     last_message = state["messages"][-1]
-    user_text = last_message.content if hasattr(last_message, "content") else str(last_message)
+    raw_content = last_message.content if hasattr(last_message, "content") else str(last_message)
+    user_text = raw_content if isinstance(raw_content, str) else str(raw_content)
 
     classification = await classify_intent_local(user_text)
 
@@ -236,23 +237,15 @@ async def human_confirmation_node(state: AgentState) -> dict[str, Any]:
     must resume via ``Command(resume={"approved": True/False})``.
     """
     last_message = state["messages"][-1]
-    user_text = (
-        last_message.content
-        if hasattr(last_message, "content")
-        else str(last_message)
-    )
-    action_desc = (
-        f"Mike Ross wants to execute red teaming tools. "
-        f"Last user request: {user_text}"
-    )
+    user_text = last_message.content if hasattr(last_message, "content") else str(last_message)
+    action_desc = f"Mike Ross wants to execute red teaming tools. Last user request: {user_text}"
 
     user_decision = interrupt(
         {
             "action": "confirm_red_teaming",
             "description": action_desc,
             "warning": (
-                "This action will execute offensive security tools against "
-                "the specified target."
+                "This action will execute offensive security tools against the specified target."
             ),
         }
     )
@@ -292,7 +285,7 @@ async def responder_node(state: AgentState) -> dict[str, Any]:
 # =========================================================================
 
 
-def build_fraud_ai_graph() -> CompiledStateGraph:
+def build_fraud_ai_graph() -> CompiledStateGraph:  # type: ignore[type-arg]
     """Build and compile the FraudAI orchestration graph.
 
     Returns a compiled ``StateGraph`` with MemorySaver checkpointer

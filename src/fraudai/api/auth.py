@@ -45,9 +45,7 @@ async def get_current_user(
     Raises:
         HTTPException 401: Invalid or expired token.
     """
-    raise NotImplementedError(
-        "JWT validation not yet implemented. Scheduled for F4 build phase."
-    )
+    raise NotImplementedError("JWT validation not yet implemented. Scheduled for F4 build phase.")
 
 
 async def get_admin_user(

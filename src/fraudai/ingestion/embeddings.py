@@ -78,6 +78,7 @@ class EmbeddingGenerator:
         if device is None:
             try:
                 import torch
+
                 device = "cuda" if torch.cuda.is_available() else "cpu"
             except ImportError:
                 device = "cpu"
@@ -91,7 +92,7 @@ class EmbeddingGenerator:
         self._sparse_encoder: _TFIDFSparseEncoder | None = None
 
         try:
-            from FlagEmbedding import BGEM3FlagModel  # type: ignore[import-untyped]
+            from FlagEmbedding import BGEM3FlagModel
 
             logger.info(
                 "Loading FlagEmbedding model '%s' on device '%s'",
@@ -139,7 +140,8 @@ class EmbeddingGenerator:
             )
             # FlagEmbedding returns a dict with 'dense_vecs' key
             dense: np.ndarray = output["dense_vecs"]
-            return dense.tolist()
+            result: list[list[float]] = dense.tolist()
+            return result
 
         assert self._st_model is not None
         embeddings = self._st_model.encode(
@@ -148,7 +150,8 @@ class EmbeddingGenerator:
             show_progress_bar=False,
             normalize_embeddings=True,
         )
-        return embeddings.tolist()  # type: ignore[union-attr]
+        st_result: list[list[float]] = embeddings.tolist()
+        return st_result
 
     # ------------------------------------------------------------------
     # Sparse
@@ -172,7 +175,7 @@ class EmbeddingGenerator:
             lexical_weights: list[dict[str, float]] = output["lexical_weights"]
             results: list[dict[str, Any]] = []
             for token_weights in lexical_weights:
-                indices = [int(k) for k in token_weights.keys()]
+                indices = [int(k) for k in token_weights]
                 values = list(token_weights.values())
                 results.append({"indices": indices, "values": values})
             return results
@@ -196,7 +199,4 @@ class EmbeddingGenerator:
         dense_vecs = self.encode_dense(texts)
         sparse_vecs = self.encode_sparse(texts)
 
-        return [
-            {"dense": d, "sparse": s}
-            for d, s in zip(dense_vecs, sparse_vecs)
-        ]
+        return [{"dense": d, "sparse": s} for d, s in zip(dense_vecs, sparse_vecs, strict=True)]

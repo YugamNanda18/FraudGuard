@@ -290,9 +290,7 @@ class LegalRetriever:
                     "texto_relevante": result.text[:500],
                     "score": round(result.score, 4),
                     "fecha_publicacion": result.metadata.get("fecha_publicacion", ""),
-                    "estado_consolidacion": result.metadata.get(
-                        "estado_consolidacion", ""
-                    ),
+                    "estado_consolidacion": result.metadata.get("estado_consolidacion", ""),
                     "collection": result.collection,
                 }
             )

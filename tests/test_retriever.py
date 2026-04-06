@@ -341,9 +341,7 @@ def test_format_context_louis_template(retriever: LegalRetriever) -> None:
     """format_context() with agent_name='louis' should use the Louis template."""
     results = [_make_retrieval_result(idx=0)]
 
-    context = retriever.format_context(
-        results, corpus_version="2026-W14", agent_name="louis"
-    )
+    context = retriever.format_context(results, corpus_version="2026-W14", agent_name="louis")
 
     assert "LEGAL REFERENCES" in context
     assert "INSTRUCTIONS FOR CITATION" in context
@@ -365,7 +363,7 @@ def test_format_context_includes_metadata(retriever: LegalRetriever) -> None:
 
     assert "2010-04-29" in context  # fecha_publicacion
     assert "2025-12-01" in context  # fecha_consolidacion
-    assert "vigente" in context     # estado_consolidacion
+    assert "vigente" in context  # estado_consolidacion
 
 
 # ---------------------------------------------------------------------------

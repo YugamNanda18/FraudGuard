@@ -19,13 +19,11 @@ Architecture decision (F3 gate):
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from langchain_core.tools import tool  # noqa: TC002 — runtime decorator
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from fraudai.rag.retriever import LegalRetriever
 
 logger = logging.getLogger(__name__)
@@ -36,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 @tool
-def analyze_transactions(data_path: str, file_format: str = "csv") -> dict:
+def analyze_transactions(data_path: str, file_format: str = "csv") -> dict[str, Any]:
     """Analyse a transaction dataset for statistical anomalies.
 
     Reads the file at *data_path* (CSV or JSON), computes distribution
@@ -58,7 +56,7 @@ def analyze_transactions(data_path: str, file_format: str = "csv") -> dict:
 def detect_patterns(
     data_path: str,
     algorithms: list[str] | None = None,
-) -> dict:
+) -> dict[str, Any]:
     """Run ML pattern detection on transactions.
 
     Applies Isolation Forest and DBSCAN (or user-specified algorithms) to
@@ -78,7 +76,7 @@ def detect_patterns(
 
 
 @tool
-def risk_scoring(data_path: str) -> dict:
+def risk_scoring(data_path: str) -> dict[str, Any]:
     """Calculate risk scores (0-100) per transaction and account.
 
     Aggregates statistical and ML signals into a composite risk score.
@@ -96,7 +94,7 @@ def risk_scoring(data_path: str) -> dict:
 
 
 @tool
-def generate_rules(patterns: dict) -> dict:
+def generate_rules(patterns: dict[str, Any]) -> dict[str, Any]:
     """Generate detection rules from detected patterns.
 
     Translates ML-detected patterns into deterministic rules expressed in
@@ -119,7 +117,7 @@ def generate_rules(patterns: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def create_search_boe(retriever: LegalRetriever) -> Callable:
+def create_search_boe(retriever: LegalRetriever) -> Any:
     """Factory that creates a search_boe tool bound to a LegalRetriever instance.
 
     The returned tool is an async LangChain ``@tool`` function with the
@@ -137,8 +135,8 @@ def create_search_boe(retriever: LegalRetriever) -> Callable:
     async def search_boe(
         query: str,
         k: int = 20,
-        filters: dict | None = None,
-    ) -> list[dict]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         """Search BOE and EU legislation via RAG.
 
         Performs hybrid search (dense + BM25) against the BOE legislation
@@ -168,8 +166,8 @@ def create_search_boe(retriever: LegalRetriever) -> Callable:
 def search_boe(
     query: str,
     k: int = 20,
-    filters: dict | None = None,
-) -> list[dict]:
+    filters: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     """Search BOE and EU legislation via RAG.
 
     Performs hybrid search (dense + BM25) against the BOE legislation
@@ -194,8 +192,8 @@ def search_boe(
 @tool
 def generate_sar_report(
     case_description: str,
-    subject_data: dict | None = None,
-) -> dict:
+    subject_data: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Generate a SAR/STR draft report in SEPBLAC format.
 
     Produces a structured Suspicious Activity Report following the format
@@ -217,7 +215,7 @@ def generate_sar_report(
 
 
 @tool
-def compliance_checklist(regulation: str) -> dict:
+def compliance_checklist(regulation: str) -> dict[str, Any]:
     """Generate a compliance checklist for the specified regulation.
 
     Builds an actionable checklist of requirements for the given regulatory
@@ -242,7 +240,7 @@ def compliance_checklist(regulation: str) -> dict:
 
 
 @tool
-def graph_analysis(data_path: str) -> dict:
+def graph_analysis(data_path: str) -> dict[str, Any]:
     """Build and analyse a transaction graph.
 
     Constructs a directed graph from transaction data using NetworkX.
@@ -271,7 +269,7 @@ def graph_analysis(data_path: str) -> dict:
 def adversarial_evasion(
     target_endpoint: str,
     attack_type: str = "fgsm",
-) -> dict:
+) -> dict[str, Any]:
     """Run adversarial evasion attacks against a fraud detection model.
 
     Generates adversarial examples designed to evade the target model's
@@ -295,7 +293,7 @@ def adversarial_evasion(
 def prompt_injection_suite(
     target_endpoint: str,
     system_prompt: str | None = None,
-) -> dict:
+) -> dict[str, Any]:
     """Test an LLM endpoint for prompt injection vulnerabilities.
 
     Executes a curated suite of prompt injection, jailbreaking, and data
@@ -322,7 +320,7 @@ def prompt_injection_suite(
 def generate_pipeline(
     requirements: str,
     output_format: str = "python",
-) -> dict:
+) -> dict[str, Any]:
     """Generate a Python ETL pipeline for fraud detection.
 
     Produces production-ready pipeline code based on the provided
@@ -344,7 +342,7 @@ def generate_pipeline(
 
 
 @tool
-def data_quality_check(data_path: str) -> dict:
+def data_quality_check(data_path: str) -> dict[str, Any]:
     """Run data quality validation on a dataset.
 
     Analyses completeness, validity, consistency, and distribution
@@ -368,7 +366,7 @@ def data_quality_check(data_path: str) -> dict:
 # Tool registries per agent
 # ---------------------------------------------------------------------------
 
-HARVEY_TOOLS: list = [
+HARVEY_TOOLS: list[Any] = [
     analyze_transactions,
     detect_patterns,
     risk_scoring,
@@ -376,30 +374,30 @@ HARVEY_TOOLS: list = [
     search_boe,
 ]
 
-LOUIS_TOOLS: list = [
+LOUIS_TOOLS: list[Any] = [
     search_boe,
     generate_sar_report,
     compliance_checklist,
 ]
 
-JESSICA_TOOLS: list = [
+JESSICA_TOOLS: list[Any] = [
     graph_analysis,
     search_boe,
 ]
 
-MIKE_TOOLS: list = [
+MIKE_TOOLS: list[Any] = [
     adversarial_evasion,
     prompt_injection_suite,
     search_boe,
 ]
 
-RACHEL_TOOLS: list = [
+RACHEL_TOOLS: list[Any] = [
     generate_pipeline,
     data_quality_check,
     search_boe,
 ]
 
-AGENT_TOOLS: dict[str, list] = {
+AGENT_TOOLS: dict[str, list[Any]] = {
     "harvey": HARVEY_TOOLS,
     "louis": LOUIS_TOOLS,
     "jessica": JESSICA_TOOLS,

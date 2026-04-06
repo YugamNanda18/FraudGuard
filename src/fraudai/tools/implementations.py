@@ -90,8 +90,10 @@ class ToolImplementations:
 
         raw = result.output_files.get("result.json")
         if raw is None:
-            logger.warning("Sandbox execution produced no result.json (output_files=%s)",
-                           list(result.output_files.keys()))
+            logger.warning(
+                "Sandbox execution produced no result.json (output_files=%s)",
+                list(result.output_files.keys()),
+            )
             return {
                 "error": "Sandbox execution produced no result.json",
                 "status": "failed",
@@ -445,45 +447,49 @@ class ToolImplementations:
         for outlier in patterns.get("outliers", []):
             algo = outlier.get("algorithm", "unknown")
             count = outlier.get("count", 0)
-            rules.append({
-                "rule_id": f"RULE-{rule_id:03d}",
-                "name": f"Outlier detection via {algo}",
-                "algorithm_source": algo,
-                "condition": {
-                    "type": "anomaly_score",
-                    "threshold": "model-defined",
-                    "description": f"Transaction flagged as outlier by {algo} "
-                                   f"(historical match: {count} transactions)",
-                },
-                "action": "flag_for_review",
-                "severity": "high" if count > 10 else "medium",
-            })
+            rules.append(
+                {
+                    "rule_id": f"RULE-{rule_id:03d}",
+                    "name": f"Outlier detection via {algo}",
+                    "algorithm_source": algo,
+                    "condition": {
+                        "type": "anomaly_score",
+                        "threshold": "model-defined",
+                        "description": f"Transaction flagged as outlier by {algo} "
+                        f"(historical match: {count} transactions)",
+                    },
+                    "action": "flag_for_review",
+                    "severity": "high" if count > 10 else "medium",
+                }
+            )
             rule_id += 1
 
         # Generate rules from cluster patterns
         for cluster in patterns.get("clusters", []):
             cluster_id = cluster.get("cluster_id", "unknown")
             size = cluster.get("size", 0)
-            rules.append({
-                "rule_id": f"RULE-{rule_id:03d}",
-                "name": f"Cluster {cluster_id} membership",
-                "condition": {
-                    "type": "cluster_assignment",
-                    "cluster_id": cluster_id,
-                    "description": f"Transaction belongs to cluster {cluster_id} "
-                                   f"(size: {size})",
-                },
-                "action": "monitor",
-                "severity": "low" if size > 20 else "medium",
-            })
+            rules.append(
+                {
+                    "rule_id": f"RULE-{rule_id:03d}",
+                    "name": f"Cluster {cluster_id} membership",
+                    "condition": {
+                        "type": "cluster_assignment",
+                        "cluster_id": cluster_id,
+                        "description": f"Transaction belongs to cluster {cluster_id} "
+                        f"(size: {size})",
+                    },
+                    "action": "monitor",
+                    "severity": "low" if size > 20 else "medium",
+                }
+            )
             rule_id += 1
 
         return {
             "rules": rules,
             "format": "json",
-            "coverage_estimate": len(rules) / max(
-                len(patterns.get("outliers", []))
-                + len(patterns.get("clusters", [])),
+            "coverage_estimate": len(rules)
+            / max(
+                len(patterns.get("outliers", [])) + len(patterns.get("clusters", [])),
                 1,
             ),
             "false_positive_estimate": "requires_calibration",
@@ -511,8 +517,13 @@ class ToolImplementations:
 
         # Check required SEPBLAC fields
         required_subject_fields = [
-            "name", "id_number", "id_type", "nationality",
-            "address", "account_numbers", "occupation",
+            "name",
+            "id_number",
+            "id_type",
+            "nationality",
+            "address",
+            "account_numbers",
+            "occupation",
         ]
         for field in required_subject_fields:
             if field not in subject or not subject[field]:
@@ -592,89 +603,147 @@ class ToolImplementations:
                     "+ EU AMLR"
                 ),
                 "checklist": [
-                    _item("Customer Due Diligence (CDD)", "Art. 3-6",
-                          "Formal identification of clients and beneficial owners"),
-                    _item("Enhanced Due Diligence (EDD)", "Art. 11-16",
-                          "Additional measures for high-risk clients and PEPs"),
-                    _item("Transaction monitoring", "Art. 17",
-                          "Continuous monitoring of business relationships"),
-                    _item("Special examination", "Art. 18",
-                          "Examination of transactions that may be linked to ML/TF"),
-                    _item("Suspicious activity reporting", "Art. 18-19",
-                          "Communication to SEPBLAC of suspicious operations"),
-                    _item("Record keeping", "Art. 25",
-                          "Conservation of documents for 10 years"),
-                    _item("Internal control body", "Art. 26",
-                          "Designation of compliance representative"),
-                    _item("Training programme", "Art. 29",
-                          "Employee training on AML/CFT obligations"),
-                    _item("Risk assessment", "Art. 32",
-                          "Regular risk assessment of products and clients"),
-                    _item("Third-party reliance", "Art. 8",
-                          "Due diligence when relying on third parties"),
+                    _item(
+                        "Customer Due Diligence (CDD)",
+                        "Art. 3-6",
+                        "Formal identification of clients and beneficial owners",
+                    ),
+                    _item(
+                        "Enhanced Due Diligence (EDD)",
+                        "Art. 11-16",
+                        "Additional measures for high-risk clients and PEPs",
+                    ),
+                    _item(
+                        "Transaction monitoring",
+                        "Art. 17",
+                        "Continuous monitoring of business relationships",
+                    ),
+                    _item(
+                        "Special examination",
+                        "Art. 18",
+                        "Examination of transactions that may be linked to ML/TF",
+                    ),
+                    _item(
+                        "Suspicious activity reporting",
+                        "Art. 18-19",
+                        "Communication to SEPBLAC of suspicious operations",
+                    ),
+                    _item("Record keeping", "Art. 25", "Conservation of documents for 10 years"),
+                    _item(
+                        "Internal control body",
+                        "Art. 26",
+                        "Designation of compliance representative",
+                    ),
+                    _item(
+                        "Training programme", "Art. 29", "Employee training on AML/CFT obligations"
+                    ),
+                    _item(
+                        "Risk assessment",
+                        "Art. 32",
+                        "Regular risk assessment of products and clients",
+                    ),
+                    _item(
+                        "Third-party reliance",
+                        "Art. 8",
+                        "Due diligence when relying on third parties",
+                    ),
                 ],
             },
             "PSD2": {
-                "regulation_full_name": (
-                    "RDL 19/2018, de servicios de pago "
-                    "(PSD2 transposition)"
-                ),
+                "regulation_full_name": ("RDL 19/2018, de servicios de pago (PSD2 transposition)"),
                 "checklist": [
-                    _item("Strong Customer Authentication (SCA)", "Art. 68",
-                          "Two-factor authentication for electronic payments"),
-                    _item("Open banking APIs", "Art. 66-67",
-                          "Access for third-party providers (AISPs, PISPs)"),
-                    _item("Fraud monitoring", "Art. 69",
-                          "Transaction risk analysis mechanisms"),
-                    _item("Liability framework", "Art. 43-48",
-                          "Liability for unauthorised payment transactions"),
-                    _item("Incident reporting", "Art. 70",
-                          "Major incident notification to competent authority"),
+                    _item(
+                        "Strong Customer Authentication (SCA)",
+                        "Art. 68",
+                        "Two-factor authentication for electronic payments",
+                    ),
+                    _item(
+                        "Open banking APIs",
+                        "Art. 66-67",
+                        "Access for third-party providers (AISPs, PISPs)",
+                    ),
+                    _item("Fraud monitoring", "Art. 69", "Transaction risk analysis mechanisms"),
+                    _item(
+                        "Liability framework",
+                        "Art. 43-48",
+                        "Liability for unauthorised payment transactions",
+                    ),
+                    _item(
+                        "Incident reporting",
+                        "Art. 70",
+                        "Major incident notification to competent authority",
+                    ),
                 ],
             },
             "RGPD": {
-                "regulation_full_name": (
-                    "LOPDGDD (LO 3/2018) + GDPR "
-                    "(Regulation (EU) 2016/679)"
-                ),
+                "regulation_full_name": ("LOPDGDD (LO 3/2018) + GDPR (Regulation (EU) 2016/679)"),
                 "checklist": [
-                    _item("Data Protection Impact Assessment", "Art. 35 GDPR",
-                          "DPIA for high-risk processing activities"),
-                    _item("Data Processing Register", "Art. 30 GDPR",
-                          "Record of processing activities"),
-                    _item("Consent management", "Art. 6-7 GDPR",
-                          "Lawful basis for processing, consent mechanisms"),
-                    _item("Data Protection Officer", "Art. 37-39 GDPR",
-                          "DPO designation for obligated entities"),
-                    _item("Data subject rights", "Art. 15-22 GDPR",
-                          "Access, rectification, erasure, portability"),
-                    _item("Breach notification", "Art. 33-34 GDPR",
-                          "72-hour notification to AEPD"),
-                    _item("International transfers", "Art. 44-49 GDPR",
-                          "Adequate safeguards for data transfers outside EEA"),
+                    _item(
+                        "Data Protection Impact Assessment",
+                        "Art. 35 GDPR",
+                        "DPIA for high-risk processing activities",
+                    ),
+                    _item(
+                        "Data Processing Register",
+                        "Art. 30 GDPR",
+                        "Record of processing activities",
+                    ),
+                    _item(
+                        "Consent management",
+                        "Art. 6-7 GDPR",
+                        "Lawful basis for processing, consent mechanisms",
+                    ),
+                    _item(
+                        "Data Protection Officer",
+                        "Art. 37-39 GDPR",
+                        "DPO designation for obligated entities",
+                    ),
+                    _item(
+                        "Data subject rights",
+                        "Art. 15-22 GDPR",
+                        "Access, rectification, erasure, portability",
+                    ),
+                    _item("Breach notification", "Art. 33-34 GDPR", "72-hour notification to AEPD"),
+                    _item(
+                        "International transfers",
+                        "Art. 44-49 GDPR",
+                        "Adequate safeguards for data transfers outside EEA",
+                    ),
                 ],
             },
             "AI_ACT": {
-                "regulation_full_name": (
-                    "EU AI Act (Regulation (EU) 2024/1689)"
-                ),
+                "regulation_full_name": ("EU AI Act (Regulation (EU) 2024/1689)"),
                 "checklist": [
-                    _item("Risk classification", "Art. 6",
-                          "Classify AI system risk level"),
-                    _item("Conformity assessment", "Art. 43",
-                          "Assessment for high-risk AI systems"),
-                    _item("Technical documentation", "Art. 11",
-                          "Comprehensive technical documentation of AI system"),
-                    _item("Data governance", "Art. 10",
-                          "Training data quality, representativeness, bias mitigation"),
-                    _item("Transparency obligations", "Art. 13",
-                          "Users informed they are interacting with AI"),
-                    _item("Human oversight", "Art. 14",
-                          "Meaningful human oversight mechanisms"),
-                    _item("Post-market monitoring", "Art. 72",
-                          "Continuous monitoring of AI system performance"),
-                    _item("Incident reporting", "Art. 73",
-                          "Report serious incidents to market surveillance authority"),
+                    _item("Risk classification", "Art. 6", "Classify AI system risk level"),
+                    _item(
+                        "Conformity assessment", "Art. 43", "Assessment for high-risk AI systems"
+                    ),
+                    _item(
+                        "Technical documentation",
+                        "Art. 11",
+                        "Comprehensive technical documentation of AI system",
+                    ),
+                    _item(
+                        "Data governance",
+                        "Art. 10",
+                        "Training data quality, representativeness, bias mitigation",
+                    ),
+                    _item(
+                        "Transparency obligations",
+                        "Art. 13",
+                        "Users informed they are interacting with AI",
+                    ),
+                    _item("Human oversight", "Art. 14", "Meaningful human oversight mechanisms"),
+                    _item(
+                        "Post-market monitoring",
+                        "Art. 72",
+                        "Continuous monitoring of AI system performance",
+                    ),
+                    _item(
+                        "Incident reporting",
+                        "Art. 73",
+                        "Report serious incidents to market surveillance authority",
+                    ),
                 ],
             },
         }
@@ -683,7 +752,7 @@ class ToolImplementations:
         if key not in checklists:
             return {
                 "error": f"Unknown regulation '{regulation}'. "
-                         f"Supported: {sorted(checklists.keys())}",
+                f"Supported: {sorted(checklists.keys())}",
                 "status": "failed",
             }
 
@@ -853,10 +922,32 @@ class ToolImplementations:
     # ===================================================================
 
     # Internal/private networks blocked for red teaming tools (SSRF prevention)
-    _BLOCKED_TARGETS = ("localhost", "127.0.0.1", "0.0.0.0", "10.", "172.16.", "172.17.",
-                        "172.18.", "172.19.", "172.20.", "172.21.", "172.22.", "172.23.",
-                        "172.24.", "172.25.", "172.26.", "172.27.", "172.28.", "172.29.",
-                        "172.30.", "172.31.", "192.168.", "169.254.", "[::1]", "metadata.google")
+    _BLOCKED_TARGETS = (
+        "localhost",
+        "127.0.0.1",
+        "0.0.0.0",
+        "10.",
+        "172.16.",
+        "172.17.",
+        "172.18.",
+        "172.19.",
+        "172.20.",
+        "172.21.",
+        "172.22.",
+        "172.23.",
+        "172.24.",
+        "172.25.",
+        "172.26.",
+        "172.27.",
+        "172.28.",
+        "172.29.",
+        "172.30.",
+        "172.31.",
+        "192.168.",
+        "169.254.",
+        "[::1]",
+        "metadata.google",
+    )
 
     def _validate_target_endpoint(self, target_endpoint: str) -> None:
         """Block requests to internal/private networks (SSRF prevention)."""
@@ -879,7 +970,8 @@ class ToolImplementations:
         self._validate_target_endpoint(target_endpoint)
         logger.info(
             "adversarial_evasion: target=%s, attack_type=%s",
-            target_endpoint, attack_type,
+            target_endpoint,
+            attack_type,
         )
         code = self._build_adversarial_evasion_code(target_endpoint, attack_type)
 
@@ -1219,7 +1311,8 @@ class ToolImplementations:
         """
         logger.info(
             "generate_pipeline: requirements_length=%d, format=%s",
-            len(requirements), output_format,
+            len(requirements),
+            output_format,
         )
 
         # Build pipeline template based on requirements keywords
@@ -1358,8 +1451,7 @@ class ToolImplementations:
     @staticmethod
     def _generate_pipeline_yaml(requirements: str, stages: list[dict[str, str]]) -> str:
         stage_lines = "\n".join(
-            f"  - name: {s['name']}\n    description: {s['description']}"
-            for s in stages
+            f"  - name: {s['name']}\n    description: {s['description']}" for s in stages
         )
         return textwrap.dedent(f"""\
             # ETL Pipeline Definition - Generated by FraudAI Agent - Rachel

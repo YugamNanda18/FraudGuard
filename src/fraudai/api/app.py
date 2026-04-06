@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -63,7 +63,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     session_manager = SessionManager()
 
     # Feedback store (in-memory MVP -- list of dicts)
-    feedback_store: list[dict] = []
+    feedback_store: list[dict[str, Any]] = []
 
     # Attach to app.state for route access
     app.state.graph = graph

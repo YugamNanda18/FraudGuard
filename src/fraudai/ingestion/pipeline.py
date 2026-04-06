@@ -8,16 +8,19 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
 from qdrant_client import models as qdrant_models
 
-from fraudai.ingestion.boe_client import BOEClient, BOEDocumentMeta
-from fraudai.ingestion.chunker import LegalChunk, LegalChunker
-from fraudai.ingestion.embeddings import EmbeddingGenerator
-from fraudai.ingestion.text_extractor import BOETextExtractor
+from fraudai.ingestion.boe_client import (  # noqa: TC001 — runtime usage in __init__ and bodies
+    BOEClient,
+    BOEDocumentMeta,
+)
+from fraudai.ingestion.chunker import LegalChunk, LegalChunker  # noqa: TC001
+from fraudai.ingestion.embeddings import EmbeddingGenerator  # noqa: TC001
+from fraudai.ingestion.text_extractor import BOETextExtractor  # noqa: TC001
 from fraudai.rag.qdrant_store import QdrantStore
 
 logger = logging.getLogger(__name__)
@@ -125,7 +128,7 @@ class BOEIngestionPipeline:
         result = PipelineResult(corpus_version=self._corpus_version)
 
         if since_date is None:
-            since_date = datetime.now(tz=timezone.utc).strftime("%Y%m%d")
+            since_date = datetime.now(tz=UTC).strftime("%Y%m%d")
 
         logger.info(
             "Pipeline incremental run started (since=%s, corpus_version=%s)",
@@ -252,10 +255,10 @@ class BOEIngestionPipeline:
         embeddings: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """Combine chunk data with embeddings into Qdrant-ready dicts."""
-        now_iso = datetime.now(tz=timezone.utc).isoformat()
+        now_iso = datetime.now(tz=UTC).isoformat()
         qdrant_chunks: list[dict[str, Any]] = []
 
-        for chunk, emb in zip(chunks, embeddings):
+        for chunk, emb in zip(chunks, embeddings, strict=True):
             sparse_data = emb.get("sparse", {})
             sparse_vector: qdrant_models.SparseVector | None = None
             if sparse_data and sparse_data.get("indices"):
@@ -268,12 +271,14 @@ class BOEIngestionPipeline:
             metadata["version_corpus"] = self._corpus_version
             metadata["fecha_ingestion"] = now_iso
 
-            qdrant_chunks.append({
-                "text": chunk.text,
-                "dense_vector": emb["dense"],
-                "sparse_vector": sparse_vector,
-                "metadata": metadata,
-            })
+            qdrant_chunks.append(
+                {
+                    "text": chunk.text,
+                    "dense_vector": emb["dense"],
+                    "sparse_vector": sparse_vector,
+                    "metadata": metadata,
+                }
+            )
 
         return qdrant_chunks
 
@@ -296,6 +301,6 @@ class BOEIngestionPipeline:
     @staticmethod
     def _generate_version() -> str:
         """Generate a corpus version label from current ISO week (e.g. '2026-W14')."""
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         year, week, _ = now.isocalendar()
         return f"{year}-W{week:02d}"
