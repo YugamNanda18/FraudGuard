@@ -65,49 +65,51 @@ _KEYWORD_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     (
         "harvey",
         re.compile(
-            r"(?i)\b(?:fraude|fraud|estafa|scam|transacci|transaction|anomal|"
-            r"riesgo|risk|scoring|sospech|suspicious|alerta|alert|detection|"
-            r"detectar|robo|theft|tarjeta|card|carding|skimming|phishing|"
-            r"movimiento|pago|payment|transferencia|transfer|cuenta|account|"
-            r"operaci[oó]n|dinero|money)\b"
+            r"(?i)\b(?:fraud\w*|estaf\w*|scam\w*|transacci\w*|transaction\w*|"
+            r"anomal\w*|riesgo\w*|risk\w*|scoring|sospech\w*|suspicious|"
+            r"alerta\w*|alert\w*|detect\w*|rob[oa]\w*|theft|tarjeta\w*|"
+            r"card\w*|skimming|phishing|pago\w*|payment\w*|transferencia\w*|"
+            r"transfer\w*|cuenta\w*|account\w*|operaci\w*|dinero\w*|money|"
+            r"timo\w*|engaño\w*|ilegal\w*|ilícit\w*)"
         ),
     ),
     (
         "louis",
         re.compile(
-            r"(?i)\b(?:compliance|cumplimiento|aml|kyc|psd2|rgpd|gdpr|"
-            r"regulaci|regulation|blanqueo|laundering|sar|str|sepblac|"
-            r"normativa|legal|ley|law|art[ií]culo|article|denuncia|denunciar|"
-            r"penal|sancion|sanction|multa|fine|reclamaci|complaint|contrato|"
-            r"contract|obligaci|derecho|right|tribunal|juzgado|court|"
-            r"abogado|lawyer|defensa|protecci[oó]n|consumidor|consumer)\b"
+            r"(?i)\b(?:compliance|cumplimient\w*|aml|kyc|psd2|rgpd|gdpr|"
+            r"regulaci\w*|regulation\w*|blanque\w*|laundering|sar|str|sepblac|"
+            r"normativ\w*|legal\w*|ley\w*|law|art[ií]culo\w*|article\w*|"
+            r"denunci\w*|penal\w*|sanci[oó]n\w*|sanction\w*|multa\w*|fine|"
+            r"reclamaci\w*|complaint\w*|contrat\w*|obligaci\w*|derecho\w*|"
+            r"right\w*|tribunal\w*|juzgado\w*|court|abogad\w*|lawyer\w*|"
+            r"defens\w*|protecci\w*|consumidor\w*|consumer\w*)"
         ),
     ),
     (
         "jessica",
         re.compile(
-            r"(?i)\b(?:red\s+de\s+fraude|fraud\s+network|grafo|graph|"
-            r"network|investigaci|investigation|identidad|identity|"
-            r"fatf|gafi|tipolog|typolog|comunidad|community|"
-            r"mula|relacion|v[ií]nculo|link|conexi[oó]n|patr[oó]n)\b"
+            r"(?i)\b(?:red\s+de\s+fraude|fraud\s+network|grafo\w*|graph\w*|"
+            r"network\w*|investigaci\w*|investigation\w*|identidad\w*|identity\w*|"
+            r"fatf|gafi|tipolog\w*|typolog\w*|comunidad\w*|community\w*|"
+            r"mula\w*|relacion\w*|v[ií]ncul\w*|link\w*|conexi\w*|patr[oó]n\w*)"
         ),
     ),
     (
         "mike",
         re.compile(
-            r"(?i)\b(?:red\s+team|adversar|evasion|evasi[oó]n|prompt\s+injection|"
-            r"ataque|attack|seguridad\s+ia|ai\s+security|pentest|"
-            r"vulnerabilid|vulnerability|robustez|robustness|"
-            r"modelo\s+ml|hackear|hack|exploit|inyecci[oó]n)\b"
+            r"(?i)\b(?:red\s+team\w*|adversar\w*|evasi[oó]n\w*|evasion\w*|"
+            r"prompt\s+injection|ataque\w*|attack\w*|seguridad\s+ia|"
+            r"ai\s+security|pentest\w*|vulnerabilid\w*|vulnerability\w*|"
+            r"robustez|robustness|modelo\s+ml|hacker?\w*|exploit\w*|inyecci\w*)"
         ),
     ),
     (
         "rachel",
         re.compile(
-            r"(?i)\b(?:etl|pipeline|feature|ingenier.a\s+de\s+datos|"
-            r"data\s+engineer|calidad\s+de\s+datos|data\s+quality|"
-            r"esquema|schema|parquet|csv|polars|pandas|"
-            r"base\s+de\s+datos|database|columna|tabla|table)\b"
+            r"(?i)\b(?:etl|pipeline\w*|feature\w*|ingenier.a\s+de\s+datos|"
+            r"data\s+engineer\w*|calidad\s+de\s+datos|data\s+quality|"
+            r"esquema\w*|schema\w*|parquet|csv|polars|pandas|"
+            r"base\s+de\s+datos|database\w*|column\w*|tabla\w*|table\w*)"
         ),
     ),
 ]
@@ -178,7 +180,7 @@ class DonnaRouter:
     ) -> None:
         self._ollama_host = ollama_host.rstrip("/")
         self._model = model
-        self._timeout = 15.0
+        self._timeout = 10.0
 
     async def classify(self, message: str) -> IntentClassification:
         """Classify user intent and detect language.
