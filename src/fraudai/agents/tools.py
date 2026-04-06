@@ -6,6 +6,14 @@ the sandboxed execution environment in F4.
 
 Tool registries group tools per agent for binding to the LLM at invocation
 time.
+
+Architecture decision (F3 gate):
+    ``search_boe`` is the ONLY interface agents use for RAG queries.
+    Internally it delegates to ``LegalRetriever`` (rag/retriever.py)
+    which handles embedding, hybrid search, reranking, and citation
+    formatting.  Agents NEVER call LegalRetriever directly — all RAG
+    access goes through this tool so it is visible in tool_results
+    and audit logs.
 """
 
 from __future__ import annotations

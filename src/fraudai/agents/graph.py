@@ -12,7 +12,7 @@ the real implementation connecting to Claude API will be added in F4.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from langchain_core.messages import AIMessage
 from langgraph.checkpoint.memory import MemorySaver
@@ -30,11 +30,33 @@ logger = logging.getLogger(__name__)
 
 
 # =========================================================================
+# Return type contracts for stubs (replaced with real implementations in F4)
+# =========================================================================
+
+
+class IntentClassification(TypedDict):
+    """Return contract for classify_intent_local."""
+
+    agent: str       # "harvey" | "louis" | "jessica" | "mike" | "rachel"
+    language: str    # "es" | "en"
+    confidence: float  # 0.0 - 1.0
+
+
+class AgentInvocationResult(TypedDict):
+    """Return contract for invoke_claude_agent."""
+
+    message: Any             # AIMessage
+    tool_results: list[dict[str, Any]]
+    analysis_summary: str | None
+    escalation: dict[str, Any] | None
+
+
+# =========================================================================
 # Placeholder — will be replaced in F4
 # =========================================================================
 
 
-async def classify_intent_local(message: str) -> dict[str, Any]:
+async def classify_intent_local(message: str) -> IntentClassification:
     """Classify user intent using local Ollama model (Llama 3.1 8B).
 
     Stub — returns a placeholder classification.  Real implementation
@@ -52,7 +74,7 @@ async def invoke_claude_agent(
     system_prompt: str,
     tools: list,
     state: AgentState,
-) -> dict[str, Any]:
+) -> AgentInvocationResult:
     """Invoke a Claude-backed specialist agent.
 
     Stub — returns a placeholder response.  Real implementation will call
