@@ -5,8 +5,8 @@ Implements the StateGraph defined in ADR-003 (F0.5):
     agent -> {responder | escalate -> donna}
     responder -> END
 
-Nodes for specialist agents are stubs calling ``invoke_claude_agent()`` —
-the real implementation connecting to Claude API will be added in F4.
+Specialist agent nodes delegate to ``ClaudeAgentInvoker`` via the
+``invoke_claude_agent()`` function (implemented in F4).
 """
 
 from __future__ import annotations
@@ -19,9 +19,12 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 
+from fraudai.agents.claude_invoker import ClaudeAgentInvoker
+from fraudai.agents.donna import DonnaRouter, IntentClassification
 from fraudai.agents.prompts import AGENT_PROMPTS
 from fraudai.agents.state import AgentState
 from fraudai.agents.tools import AGENT_TOOLS
+from fraudai.core.config import settings
 
 if TYPE_CHECKING:
     from langgraph.graph.state import CompiledStateGraph
@@ -30,16 +33,12 @@ logger = logging.getLogger(__name__)
 
 
 # =========================================================================
-# Return type contracts for stubs (replaced with real implementations in F4)
+# Return type contracts
 # =========================================================================
 
-
-class IntentClassification(TypedDict):
-    """Return contract for classify_intent_local."""
-
-    agent: str       # "harvey" | "louis" | "jessica" | "mike" | "rachel"
-    language: str    # "es" | "en"
-    confidence: float  # 0.0 - 1.0
+# IntentClassification is imported from fraudai.agents.donna (canonical location)
+# and re-exported here for backward compatibility.
+__all__ = ["IntentClassification"]
 
 
 class AgentInvocationResult(TypedDict):
@@ -52,21 +51,46 @@ class AgentInvocationResult(TypedDict):
 
 
 # =========================================================================
-# Placeholder — will be replaced in F4
+# Donna Router — lazy singleton
 # =========================================================================
+
+_donna_router: DonnaRouter | None = None
+
+
+def _get_donna_router() -> DonnaRouter:
+    """Return the module-level DonnaRouter singleton, creating it on first call."""
+    global _donna_router  # noqa: PLW0603
+    if _donna_router is None:
+        _donna_router = DonnaRouter(
+            ollama_host=settings.ollama_host,
+            model=settings.ollama_model,
+        )
+    return _donna_router
 
 
 async def classify_intent_local(message: str) -> IntentClassification:
     """Classify user intent using local Ollama model (Llama 3.1 8B).
 
-    Stub — returns a placeholder classification.  Real implementation
-    will call Ollama in F4.
+    Delegates to ``DonnaRouter.classify()`` which calls Ollama with
+    JSON mode and falls back to keyword matching on failure.
 
     Returns:
-        Dict with keys ``agent`` (str) and ``language`` ("es" | "en").
+        Dict with keys ``agent`` (str | None), ``language`` ("es" | "en"),
+        and ``confidence`` (float 0.0-1.0).
     """
-    logger.warning("classify_intent_local is a stub — returning default routing")
-    return {"agent": "harvey", "language": "es", "confidence": 0.0}
+    router = _get_donna_router()
+    return await router.classify(message)
+
+
+_claude_invoker: ClaudeAgentInvoker | None = None
+
+
+def _get_claude_invoker() -> ClaudeAgentInvoker:
+    """Return the module-level ClaudeAgentInvoker singleton, creating it on first call."""
+    global _claude_invoker  # noqa: PLW0603
+    if _claude_invoker is None:
+        _claude_invoker = ClaudeAgentInvoker(api_key=settings.anthropic_api_key)
+    return _claude_invoker
 
 
 async def invoke_claude_agent(
@@ -77,24 +101,15 @@ async def invoke_claude_agent(
 ) -> AgentInvocationResult:
     """Invoke a Claude-backed specialist agent.
 
-    Stub — returns a placeholder response.  Real implementation will call
-    the Anthropic API via ``langchain-anthropic`` in F4.
+    Delegates to ``ClaudeAgentInvoker.invoke()`` which handles tool binding,
+    retry logic, and escalation detection.
 
     Returns:
         Dict with keys ``message`` (AIMessage), ``tool_results`` (list),
         ``analysis_summary`` (str | None), ``escalation`` (dict | None).
     """
-    logger.warning(
-        "invoke_claude_agent('%s') is a stub — returning placeholder", agent_name
-    )
-    return {
-        "message": AIMessage(
-            content=f"[{agent_name}] Stub response — implementation pending (F4)."
-        ),
-        "tool_results": [],
-        "analysis_summary": None,
-        "escalation": None,
-    }
+    invoker = _get_claude_invoker()
+    return await invoker.invoke(agent_name, system_prompt, tools, state)
 
 
 # =========================================================================

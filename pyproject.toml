@@ -26,6 +26,7 @@ dependencies = [
     "numpy>=2.1",
     "scikit-learn>=1.6",
     "beautifulsoup4>=4.12",
+    "docker>=7.0",
 ]
 
 [project.optional-dependencies]

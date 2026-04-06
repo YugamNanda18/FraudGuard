@@ -172,7 +172,8 @@ def _build_client(
     transport: httpx.MockTransport, **kwargs: object
 ) -> BOEClient:
     http_client = httpx.AsyncClient(transport=transport)
-    return BOEClient(client=http_client, max_retries=1, **kwargs)
+    kwargs.setdefault("max_retries", 1)
+    return BOEClient(client=http_client, **kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -479,14 +480,14 @@ async def test_semaphore_limits_concurrency() -> None:
 
 
 @pytest.mark.asyncio
-async def test_context_manager_closes_client() -> None:
+async def test_context_manager_closes_internal_client() -> None:
     transport = httpx.MockTransport(
         lambda req: httpx.Response(200, json={"status": {"code": "200"}, "data": []})
     )
-    client = _build_client(transport)
+    # Create client WITHOUT passing external httpx client so close() actually closes it
+    client = BOEClient(max_retries=1)
     async with client:
         pass
-    # After close, internal client should be closed
     assert client._client.is_closed
 
 

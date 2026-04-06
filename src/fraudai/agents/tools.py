@@ -18,7 +18,17 @@ Architecture decision (F3 gate):
 
 from __future__ import annotations
 
+import logging
+from typing import TYPE_CHECKING
+
 from langchain_core.tools import tool  # noqa: TC002 — runtime decorator
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from fraudai.rag.retriever import LegalRetriever
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Harvey Specter — Transaction Fraud Detection tools
@@ -109,6 +119,51 @@ def generate_rules(patterns: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def create_search_boe(retriever: LegalRetriever) -> Callable:
+    """Factory that creates a search_boe tool bound to a LegalRetriever instance.
+
+    The returned tool is an async LangChain ``@tool`` function with the
+    retriever captured via closure.  This avoids global state while keeping
+    the tool visible in ``tool_results`` and audit logs.
+
+    Args:
+        retriever: A fully initialised ``LegalRetriever`` instance.
+
+    Returns:
+        An async LangChain tool function ``search_boe``.
+    """
+
+    @tool
+    async def search_boe(
+        query: str,
+        k: int = 20,
+        filters: dict | None = None,
+    ) -> list[dict]:
+        """Search BOE and EU legislation via RAG.
+
+        Performs hybrid search (dense + BM25) against the BOE legislation
+        vector store.  Returns articles with exact citations and metadata.
+
+        Args:
+            query: Natural-language query describing the regulatory question.
+            k: Maximum number of results to return.
+            filters: Optional metadata filters (e.g. ``{"materia_codigo":
+                "derecho financiero"}``, ``{"rango": "Ley"}``).
+
+        Returns:
+            List of dicts, each with keys: texto_relevante, boe_id,
+            norma_titulo, articulo, score, fecha_publicacion,
+            estado_consolidacion, collection.
+        """
+        logger.info("search_boe called: query=%r, k=%d, filters=%s", query, k, filters)
+        results = await retriever.retrieve(query, k=k, filters=filters)
+        citations = retriever.format_citations(results)
+        logger.info("search_boe returning %d citations", len(citations))
+        return citations
+
+    return search_boe
+
+
 @tool
 def search_boe(
     query: str,
@@ -119,6 +174,9 @@ def search_boe(
 
     Performs hybrid search (dense + BM25) against the BOE legislation
     vector store.  Returns articles with exact citations and metadata.
+
+    **Stub**: This fallback is used when no ``LegalRetriever`` is available.
+    Use ``create_search_boe()`` or ``ToolRegistry`` to get a working version.
 
     Args:
         query: Natural-language query describing the regulatory question.

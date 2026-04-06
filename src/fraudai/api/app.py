@@ -11,6 +11,7 @@ Reference: BR-006, ADR-006.
 
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
@@ -21,7 +22,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from fraudai.api.routes import router as api_router
+from fraudai.api.session_manager import SessionManager
 from fraudai.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -29,22 +33,48 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Application lifespan: startup and shutdown hooks.
 
     Startup:
-    - Verify Qdrant connectivity
-    - Verify Ollama availability (Donna model loaded)
-    - Warm up embedding model (BGE-M3)
-    - Initialize LangGraph checkpointer (MemorySaver in dev, PostgresSaver in prod)
+    - Initialize QdrantStore (create collections if missing)
+    - Compile LangGraph orchestration graph
+    - Create SessionManager
+    - Store all on app.state for route access
 
     Shutdown:
-    - Flush pending audit log entries (SEC-004)
-    - Close database connections
-    - Release GPU resources
+    - Log cleanup (graceful shutdown)
     """
     # --- Startup ---
-    # TODO (F4): Initialize services, verify connectivity, warm up models
-    _ = settings  # Ensure settings are loaded early
+    from fraudai.agents.graph import build_fraud_ai_graph
+    from fraudai.rag.qdrant_store import QdrantStore
+
+    logger.info("Starting FraudAI Agent API (environment=%s)", settings.environment)
+
+    # Qdrant vector store
+    store = QdrantStore(host=settings.qdrant_host, port=settings.qdrant_port)
+    try:
+        await store.initialize()
+        logger.info("QdrantStore initialized successfully")
+    except Exception:
+        logger.exception("QdrantStore initialization failed -- continuing in degraded mode")
+
+    # LangGraph compiled graph
+    graph = build_fraud_ai_graph()
+    logger.info("LangGraph orchestration graph compiled")
+
+    # Session manager (in-memory MVP)
+    session_manager = SessionManager()
+
+    # Feedback store (in-memory MVP -- list of dicts)
+    feedback_store: list[dict] = []
+
+    # Attach to app.state for route access
+    app.state.graph = graph
+    app.state.store = store
+    app.state.session_manager = session_manager
+    app.state.feedback_store = feedback_store
+
     yield
+
     # --- Shutdown ---
-    # TODO (F4): Graceful cleanup
+    logger.info("Shutting down FraudAI Agent API")
 
 
 def create_app() -> FastAPI:
