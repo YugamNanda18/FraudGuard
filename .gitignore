@@ -73,3 +73,8 @@ htmlcov/
 # ruff
 .ruff_cache/
 uv.lock
+
+# Frontend
+frontend/.next/
+frontend/node_modules/
+frontend/.pnpm-store/
