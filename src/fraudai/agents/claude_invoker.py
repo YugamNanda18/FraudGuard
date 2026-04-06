@@ -1,8 +1,8 @@
-"""Claude agent invoker using langchain-anthropic.
+"""LLM agent invoker with multi-provider support.
 
-Provides ``ClaudeAgentInvoker``, the production implementation that replaces
-the stub ``invoke_claude_agent()`` from F3.  Uses ``ChatAnthropic`` with
-tool binding, retry logic, and escalation detection.
+Supports Anthropic (Claude), Groq, and OpenAI-compatible providers.
+Uses ``ChatAnthropic``, ``ChatGroq``, or ``ChatOpenAI`` from langchain
+with tool binding, retry logic, and escalation detection.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ import logging
 import re
 from typing import TYPE_CHECKING, Any
 
-from langchain_anthropic import ChatAnthropic
+from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, SystemMessage
 
 from fraudai.core.metrics import AGENT_INVOCATIONS, AGENT_LATENCY, TOKENS_USED
@@ -41,32 +41,69 @@ _MAX_RETRIES = 3
 _RETRY_BASE_DELAY = 1.0  # seconds
 
 
-class ClaudeAgentInvoker:
-    """Invokes Claude Sonnet via langchain-anthropic with tool use.
+def _build_llm(
+    provider: str,
+    api_key: str,
+    model: str,
+    max_tokens: int,
+    temperature: float,
+) -> BaseChatModel:
+    """Build the appropriate LangChain chat model for the given provider."""
+    if provider == "anthropic":
+        from langchain_anthropic import ChatAnthropic
 
-    Encapsulates model construction, tool binding, retry logic, and
-    escalation detection so that graph nodes remain thin wrappers.
+        return ChatAnthropic(  # type: ignore[call-arg]
+            model=model,
+            anthropic_api_key=api_key,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+    if provider == "groq":
+        from langchain_groq import ChatGroq  # type: ignore[import-untyped]
+
+        return ChatGroq(  # type: ignore[call-arg]
+            model=model,
+            groq_api_key=api_key,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+    if provider == "openai":
+        from langchain_openai import ChatOpenAI
+
+        return ChatOpenAI(  # type: ignore[call-arg]
+            model=model,
+            openai_api_key=api_key,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+    msg = f"Unknown LLM provider: {provider}. Supported: anthropic, groq, openai"
+    raise ValueError(msg)
+
+
+class ClaudeAgentInvoker:
+    """Invokes LLM agents via langchain with tool use.
+
+    Supports multiple providers (Anthropic, Groq, OpenAI) configured via
+    the ``provider`` parameter. Encapsulates model construction, tool
+    binding, retry logic, and escalation detection.
     """
 
     def __init__(
         self,
         api_key: str,
         model: str = "claude-sonnet-4-20250514",
+        provider: str = "anthropic",
         max_tokens: int = 4096,
         temperature: float = 0.3,
     ) -> None:
-        self._model = ChatAnthropic(  # type: ignore[call-arg]
-            model=model,
-            anthropic_api_key=api_key,
-            max_tokens=max_tokens,
-            temperature=temperature,
-        )
+        self._model = _build_llm(provider, api_key, model, max_tokens, temperature)
         self._model_name = model
+        self._provider = provider
         logger.info(
-            "ClaudeAgentInvoker initialised — model=%s, max_tokens=%d, temperature=%.2f",
+            "AgentInvoker initialised — provider=%s, model=%s, max_tokens=%d",
+            provider,
             model,
             max_tokens,
-            temperature,
         )
 
     # ------------------------------------------------------------------

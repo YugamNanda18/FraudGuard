@@ -21,8 +21,11 @@ class Settings(BaseSettings):
     ollama_model: str = "llama3.1:8b-instruct-q4_K_M"
     ollama_keep_alive: str = "5m"
 
-    # Anthropic
+    # LLM Provider
+    llm_provider: str = "groq"  # "anthropic" | "groq" | "openai"
+    llm_model: str = "openai/gpt-oss-120b"
     anthropic_api_key: str = ""
+    groq_api_key: str = ""
 
     # App
     log_level: str = "INFO"

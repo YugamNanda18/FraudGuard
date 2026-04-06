@@ -666,10 +666,18 @@ async def health(request: Request) -> HealthResponse:
     except Exception:
         logger.warning("Ollama health check failed")
 
-    # Check Claude API
-    claude_ok = False
+    # Check LLM API (Anthropic, Groq, or OpenAI)
+    llm_ok = False
     try:
-        if settings.anthropic_api_key:
+        provider = settings.llm_provider
+        if provider == "groq" and settings.groq_api_key:
+            async with httpx_client.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(
+                    "https://api.groq.com/openai/v1/models",
+                    headers={"Authorization": f"Bearer {settings.groq_api_key}"},
+                )
+                llm_ok = resp.status_code == 200
+        elif provider == "anthropic" and settings.anthropic_api_key:
             async with httpx_client.AsyncClient(timeout=5.0) as client:
                 resp = await client.get(
                     "https://api.anthropic.com/v1/messages",
@@ -678,12 +686,11 @@ async def health(request: Request) -> HealthResponse:
                         "anthropic-version": "2023-06-01",
                     },
                 )
-                # 401/405 means API is reachable (auth works, method not allowed is fine)
-                claude_ok = resp.status_code in (200, 401, 405)
+                llm_ok = resp.status_code in (200, 401, 405)
         else:
-            logger.warning("Claude API key not configured")
+            logger.warning("LLM API key not configured for provider '%s'", provider)
     except Exception:
-        logger.warning("Claude API health check failed")
+        logger.warning("LLM API health check failed for provider '%s'", settings.llm_provider)
 
     # Get corpus version
     corpus_version: str | None = None
@@ -693,7 +700,7 @@ async def health(request: Request) -> HealthResponse:
         logger.warning("Failed to retrieve corpus version")
 
     # Determine overall status
-    checks = [qdrant_ok, ollama_ok, claude_ok]
+    checks = [qdrant_ok, ollama_ok, llm_ok]
     if all(checks):
         overall = "healthy"
     elif any(checks):
@@ -705,7 +712,7 @@ async def health(request: Request) -> HealthResponse:
         status=overall,
         qdrant=qdrant_ok,
         ollama=ollama_ok,
-        claude_api=claude_ok,
+        claude_api=llm_ok,
         corpus_version=corpus_version,
     )
 

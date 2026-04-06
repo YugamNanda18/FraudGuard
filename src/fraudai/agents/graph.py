@@ -86,10 +86,21 @@ _claude_invoker: ClaudeAgentInvoker | None = None
 
 
 def _get_claude_invoker() -> ClaudeAgentInvoker:
-    """Return the module-level ClaudeAgentInvoker singleton, creating it on first call."""
+    """Return the module-level AgentInvoker singleton, creating it on first call."""
     global _claude_invoker  # noqa: PLW0603
     if _claude_invoker is None:
-        _claude_invoker = ClaudeAgentInvoker(api_key=settings.anthropic_api_key)
+        provider = settings.llm_provider
+        if provider == "groq":
+            api_key = settings.groq_api_key
+        elif provider == "anthropic":
+            api_key = settings.anthropic_api_key
+        else:
+            api_key = settings.anthropic_api_key
+        _claude_invoker = ClaudeAgentInvoker(
+            api_key=api_key,
+            model=settings.llm_model,
+            provider=provider,
+        )
     return _claude_invoker
 
 

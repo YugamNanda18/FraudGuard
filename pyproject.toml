@@ -28,6 +28,7 @@ dependencies = [
     "beautifulsoup4>=4.12",
     "docker>=7.0",
     "prometheus-client>=0.21",
+    "langchain-groq>=1.1.2",
 ]
 
 [project.optional-dependencies]
