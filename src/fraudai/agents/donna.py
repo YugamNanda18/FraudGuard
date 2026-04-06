@@ -182,8 +182,8 @@ class DonnaRouter:
         try:
             result = await self._call_ollama(message)
             return result
-        except (httpx.TimeoutException, httpx.ConnectError) as exc:
-            logger.warning("Ollama unreachable (%s), falling back to keywords", type(exc).__name__)
+        except (httpx.TimeoutException, httpx.ConnectError, httpx.HTTPStatusError) as exc:
+            logger.warning("Ollama error (%s: %s), falling back to keywords", type(exc).__name__, exc)
             result = classify_by_keywords(message)
             return result
         except (json.JSONDecodeError, KeyError, ValueError) as exc:
