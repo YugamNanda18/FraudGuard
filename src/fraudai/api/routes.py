@@ -258,6 +258,11 @@ async def chat_stream(
     config = cast("RunnableConfig", {"configurable": {"thread_id": session_id}})
 
     async def event_generator() -> AsyncGenerator[str, None]:
+        accumulated_content = ""
+        agent_name = "donna"
+        tool_results_acc: list[dict[str, Any]] = []
+        start_time = time.monotonic()
+
         try:
             async for event in graph.astream_events(input_state, config=config, version="v2"):
                 event_type = event.get("event", "")
@@ -265,8 +270,16 @@ async def chat_stream(
                 if event_type == "on_chat_model_stream":
                     chunk = event.get("data", {}).get("chunk")
                     if chunk and hasattr(chunk, "content") and chunk.content:
+                        accumulated_content += chunk.content
                         payload = {"type": "token", "content": chunk.content}
                         yield f"data: {json.dumps(payload)}\n\n"
+
+                elif event_type == "on_chat_model_start":
+                    # Detect which agent's model is running
+                    meta = event.get("metadata", {})
+                    langgraph_node = meta.get("langgraph_node", "")
+                    if langgraph_node and langgraph_node not in ("donna", "responder", "human_confirmation"):
+                        agent_name = langgraph_node
 
                 elif event_type == "on_tool_start":
                     tool_name = event.get("name", "unknown")
@@ -276,15 +289,33 @@ async def chat_stream(
                 elif event_type == "on_tool_end":
                     tool_name = event.get("name", "unknown")
                     output = event.get("data", {}).get("output", "")
-                    payload = {
-                        "type": "tool_end",
+                    tool_result = {
                         "tool_name": tool_name,
-                        "result": str(output),
+                        "status": "success",
+                        "result": str(output)[:2000],
+                        "duration_ms": 0,
                     }
+                    tool_results_acc.append(tool_result)
+                    payload = {"type": "tool_result", "tool_result": tool_result}
                     yield f"data: {json.dumps(payload)}\n\n"
 
-            # Final done event
-            done_payload = {"type": "done", "session_id": session_id}
+            # Build complete ChatResponse for done event
+            latency_ms = int((time.monotonic() - start_time) * 1000)
+            done_response = {
+                "session_id": session_id,
+                "agent": agent_name,
+                "message": accumulated_content or "No response generated.",
+                "citations": [],
+                "tool_results": tool_results_acc,
+                "metadata": {
+                    "routing_agent": agent_name,
+                    "routing_confidence": 0.0,
+                    "tokens_used": 0,
+                    "latency_ms": latency_ms,
+                    "corpus_version": "unknown",
+                },
+            }
+            done_payload = {"type": "done", "response": done_response}
             yield f"data: {json.dumps(done_payload)}\n\n"
 
         except Exception as exc:
