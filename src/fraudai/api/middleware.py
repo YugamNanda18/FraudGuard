@@ -39,15 +39,18 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         call_next: RequestResponseEndpoint,
     ) -> Response:
         cid = new_correlation_id()
-
-        # Normalise path to avoid high-cardinality label explosion.
-        # Use the route pattern (e.g. "/api/v1/chat") when available,
-        # otherwise fall back to a sanitised version of the raw path.
-        endpoint = request.url.path
         method = request.method
 
         start = time.monotonic()
         response: Response = await call_next(request)
+
+        # Resolve endpoint from the matched route template to avoid
+        # high-cardinality labels (e.g. "/api/v1/sessions/{session_id}").
+        route = request.scope.get("route")
+        if route and hasattr(route, "path"):
+            endpoint = route.path
+        else:
+            endpoint = request.url.path
         duration = time.monotonic() - start
 
         status_code = str(response.status_code)

@@ -11,6 +11,7 @@ Specialist agent nodes delegate to ``ClaudeAgentInvoker`` via the
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import TYPE_CHECKING, Any, TypedDict
 
@@ -55,16 +56,19 @@ class AgentInvocationResult(TypedDict):
 # =========================================================================
 
 _donna_router: DonnaRouter | None = None
+_claude_invoker: ClaudeAgentInvoker | None = None
+_init_lock = asyncio.Lock()
 
 
-def _get_donna_router() -> DonnaRouter:
+async def _get_donna_router() -> DonnaRouter:
     """Return the module-level DonnaRouter singleton, creating it on first call."""
     global _donna_router  # noqa: PLW0603
-    if _donna_router is None:
-        _donna_router = DonnaRouter(
-            ollama_host=settings.ollama_host,
-            model=settings.ollama_model,
-        )
+    async with _init_lock:
+        if _donna_router is None:
+            _donna_router = DonnaRouter(
+                ollama_host=settings.ollama_host,
+                model=settings.ollama_model,
+            )
     return _donna_router
 
 
@@ -78,29 +82,27 @@ async def classify_intent_local(message: str) -> IntentClassification:
         Dict with keys ``agent`` (str | None), ``language`` ("es" | "en"),
         and ``confidence`` (float 0.0-1.0).
     """
-    router = _get_donna_router()
+    router = await _get_donna_router()
     return await router.classify(message)
 
 
-_claude_invoker: ClaudeAgentInvoker | None = None
-
-
-def _get_claude_invoker() -> ClaudeAgentInvoker:
+async def _get_claude_invoker() -> ClaudeAgentInvoker:
     """Return the module-level AgentInvoker singleton, creating it on first call."""
     global _claude_invoker  # noqa: PLW0603
-    if _claude_invoker is None:
-        provider = settings.llm_provider
-        if provider == "groq":
-            api_key = settings.groq_api_key
-        elif provider == "anthropic":
-            api_key = settings.anthropic_api_key
-        else:
-            api_key = settings.anthropic_api_key
-        _claude_invoker = ClaudeAgentInvoker(
-            api_key=api_key,
-            model=settings.llm_model,
-            provider=provider,
-        )
+    async with _init_lock:
+        if _claude_invoker is None:
+            provider = settings.llm_provider
+            if provider == "groq":
+                api_key = settings.groq_api_key
+            elif provider == "anthropic":
+                api_key = settings.anthropic_api_key
+            else:
+                api_key = settings.anthropic_api_key
+            _claude_invoker = ClaudeAgentInvoker(
+                api_key=api_key,
+                model=settings.llm_model,
+                provider=provider,
+            )
     return _claude_invoker
 
 
@@ -119,7 +121,7 @@ async def invoke_claude_agent(
         Dict with keys ``message`` (AIMessage), ``tool_results`` (list),
         ``analysis_summary`` (str | None), ``escalation`` (dict | None).
     """
-    invoker = _get_claude_invoker()
+    invoker = await _get_claude_invoker()
     return await invoker.invoke(agent_name, system_prompt, tools, state)
 
 
@@ -271,6 +273,8 @@ async def human_confirmation_node(state: AgentState) -> dict[str, Any]:
 
     approved = user_decision.get("approved", False) if isinstance(user_decision, dict) else False
 
+    # NOTE: needs_human_confirmation=True means REJECTED (user did not approve).
+    # needs_human_confirmation=False means APPROVED.
     return {
         "needs_human_confirmation": not approved,
     }
@@ -389,7 +393,4 @@ def build_fraud_ai_graph() -> CompiledStateGraph:  # type: ignore[type-arg]
     # --- Compile ---
     checkpointer = MemorySaver()
 
-    return graph.compile(
-        checkpointer=checkpointer,
-        interrupt_before=["human_confirmation"],
-    )
+    return graph.compile(checkpointer=checkpointer)

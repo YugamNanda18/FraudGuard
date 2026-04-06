@@ -136,6 +136,8 @@ def _build_pipeline(
 
     store = MagicMock()
     store.upsert_chunks = AsyncMock(return_value=upsert_return)
+    store._client = MagicMock()
+    store._client.scroll = AsyncMock(return_value=([], None))
 
     return BOEIngestionPipeline(
         boe_client=boe_client,
@@ -384,6 +386,8 @@ async def test_large_document_embeds_in_batches() -> None:
 
     store = MagicMock()
     store.upsert_chunks = AsyncMock(return_value=n_chunks)
+    store._client = MagicMock()
+    store._client.scroll = AsyncMock(return_value=([], None))
 
     pipeline = BOEIngestionPipeline(
         boe_client=boe_client,

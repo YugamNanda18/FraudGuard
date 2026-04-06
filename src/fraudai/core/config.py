@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     # App
     log_level: str = "INFO"
     environment: str = "development"
+    cors_allowed_origins: str = "http://localhost:3000"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

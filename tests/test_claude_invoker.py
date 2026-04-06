@@ -83,14 +83,14 @@ def _mock_model_returning(ai_msg: AIMessage) -> MagicMock:
 # ---------------------------------------------------------------------------
 
 
-@patch("fraudai.agents.claude_invoker.ChatAnthropic")
-async def test_invoke_simple_response(mock_chat_cls: MagicMock) -> None:
+@patch("fraudai.agents.claude_invoker._build_llm")
+async def test_invoke_simple_response(mock_build_llm: MagicMock) -> None:
     """Model returns a plain text response with no tool calls."""
     ai_msg = _make_ai_message(
         content="This transaction shows no anomalies.",
         usage_metadata={"input_tokens": 100, "output_tokens": 50},
     )
-    mock_chat_cls.return_value = _mock_model_returning(ai_msg)
+    mock_build_llm.return_value = _mock_model_returning(ai_msg)
 
     invoker = ClaudeAgentInvoker(api_key=_PLACEHOLDER_KEY)
     state = _base_state()
@@ -110,8 +110,8 @@ async def test_invoke_simple_response(mock_chat_cls: MagicMock) -> None:
 # ---------------------------------------------------------------------------
 
 
-@patch("fraudai.agents.claude_invoker.ChatAnthropic")
-async def test_invoke_with_tool_call(mock_chat_cls: MagicMock) -> None:
+@patch("fraudai.agents.claude_invoker._build_llm")
+async def test_invoke_with_tool_call(mock_build_llm: MagicMock) -> None:
     """Model returns a tool call; the tool is executed and result captured."""
     tool_call = {
         "name": "analyze_transactions",
@@ -122,7 +122,7 @@ async def test_invoke_with_tool_call(mock_chat_cls: MagicMock) -> None:
         content="Let me analyze these transactions.",
         tool_calls=[tool_call],
     )
-    mock_chat_cls.return_value = _mock_model_returning(ai_msg)
+    mock_build_llm.return_value = _mock_model_returning(ai_msg)
 
     mock_tool = _make_mock_tool(
         "analyze_transactions",
@@ -149,12 +149,12 @@ async def test_invoke_with_tool_call(mock_chat_cls: MagicMock) -> None:
 # ---------------------------------------------------------------------------
 
 
-@patch("fraudai.agents.claude_invoker.ChatAnthropic")
-async def test_invoke_tool_not_found(mock_chat_cls: MagicMock) -> None:
+@patch("fraudai.agents.claude_invoker._build_llm")
+async def test_invoke_tool_not_found(mock_build_llm: MagicMock) -> None:
     """Model calls a tool that is not in the agent's tool list."""
     tool_call = {"name": "nonexistent_tool", "args": {}, "id": "call_002"}
     ai_msg = _make_ai_message(content="Calling tool.", tool_calls=[tool_call])
-    mock_chat_cls.return_value = _mock_model_returning(ai_msg)
+    mock_build_llm.return_value = _mock_model_returning(ai_msg)
 
     invoker = ClaudeAgentInvoker(api_key=_PLACEHOLDER_KEY)
     state = _base_state()
@@ -172,12 +172,12 @@ async def test_invoke_tool_not_found(mock_chat_cls: MagicMock) -> None:
 # ---------------------------------------------------------------------------
 
 
-@patch("fraudai.agents.claude_invoker.ChatAnthropic")
-async def test_invoke_tool_execution_error(mock_chat_cls: MagicMock) -> None:
+@patch("fraudai.agents.claude_invoker._build_llm")
+async def test_invoke_tool_execution_error(mock_build_llm: MagicMock) -> None:
     """Tool raises an exception during execution."""
     tool_call = {"name": "analyze_transactions", "args": {}, "id": "call_003"}
     ai_msg = _make_ai_message(content="Running analysis.", tool_calls=[tool_call])
-    mock_chat_cls.return_value = _mock_model_returning(ai_msg)
+    mock_build_llm.return_value = _mock_model_returning(ai_msg)
 
     failing_tool = _make_mock_tool("analyze_transactions")
     failing_tool.ainvoke = AsyncMock(
@@ -200,13 +200,13 @@ async def test_invoke_tool_execution_error(mock_chat_cls: MagicMock) -> None:
 # ---------------------------------------------------------------------------
 
 
-@patch("fraudai.agents.claude_invoker.ChatAnthropic")
-async def test_escalation_detected_explicit(mock_chat_cls: MagicMock) -> None:
+@patch("fraudai.agents.claude_invoker._build_llm")
+async def test_escalation_detected_explicit(mock_build_llm: MagicMock) -> None:
     """Agent explicitly says 'I need to escalate'."""
     ai_msg = _make_ai_message(
         content="I detected money laundering patterns. I need to escalate this to compliance."
     )
-    mock_chat_cls.return_value = _mock_model_returning(ai_msg)
+    mock_build_llm.return_value = _mock_model_returning(ai_msg)
 
     invoker = ClaudeAgentInvoker(api_key=_PLACEHOLDER_KEY)
     state = _base_state()
@@ -217,13 +217,13 @@ async def test_escalation_detected_explicit(mock_chat_cls: MagicMock) -> None:
     assert result["escalation"]["source"] == "harvey"
 
 
-@patch("fraudai.agents.claude_invoker.ChatAnthropic")
-async def test_escalation_detected_with_target(mock_chat_cls: MagicMock) -> None:
+@patch("fraudai.agents.claude_invoker._build_llm")
+async def test_escalation_detected_with_target(mock_build_llm: MagicMock) -> None:
     """Agent says 'escalate to louis' -- target agent extracted."""
     ai_msg = _make_ai_message(
         content="These patterns require compliance review. Escalating to Louis for SAR filing."
     )
-    mock_chat_cls.return_value = _mock_model_returning(ai_msg)
+    mock_build_llm.return_value = _mock_model_returning(ai_msg)
 
     invoker = ClaudeAgentInvoker(api_key=_PLACEHOLDER_KEY)
     state = _base_state()
@@ -235,13 +235,13 @@ async def test_escalation_detected_with_target(mock_chat_cls: MagicMock) -> None
     assert result["escalation"]["target"] == "louis"
 
 
-@patch("fraudai.agents.claude_invoker.ChatAnthropic")
-async def test_escalation_recommend_handoff(mock_chat_cls: MagicMock) -> None:
+@patch("fraudai.agents.claude_invoker._build_llm")
+async def test_escalation_recommend_handoff(mock_build_llm: MagicMock) -> None:
     """Agent uses 'recommend handoff to Harvey' phrasing."""
     ai_msg = _make_ai_message(
         content="Data is clean. I recommend handoff to Harvey for fraud analysis."
     )
-    mock_chat_cls.return_value = _mock_model_returning(ai_msg)
+    mock_build_llm.return_value = _mock_model_returning(ai_msg)
 
     invoker = ClaudeAgentInvoker(api_key=_PLACEHOLDER_KEY)
     state = _base_state()
@@ -253,11 +253,11 @@ async def test_escalation_recommend_handoff(mock_chat_cls: MagicMock) -> None:
     assert result["escalation"]["target"] == "harvey"
 
 
-@patch("fraudai.agents.claude_invoker.ChatAnthropic")
-async def test_no_escalation_on_normal_response(mock_chat_cls: MagicMock) -> None:
+@patch("fraudai.agents.claude_invoker._build_llm")
+async def test_no_escalation_on_normal_response(mock_build_llm: MagicMock) -> None:
     """Normal response without escalation patterns returns None."""
     ai_msg = _make_ai_message(content="Analysis complete. No suspicious patterns detected.")
-    mock_chat_cls.return_value = _mock_model_returning(ai_msg)
+    mock_build_llm.return_value = _mock_model_returning(ai_msg)
 
     invoker = ClaudeAgentInvoker(api_key=_PLACEHOLDER_KEY)
     state = _base_state()
@@ -272,12 +272,12 @@ async def test_no_escalation_on_normal_response(mock_chat_cls: MagicMock) -> Non
 # ---------------------------------------------------------------------------
 
 
-@patch("fraudai.agents.claude_invoker.ChatAnthropic")
-async def test_system_prompt_passed_correctly(mock_chat_cls: MagicMock) -> None:
+@patch("fraudai.agents.claude_invoker._build_llm")
+async def test_system_prompt_passed_correctly(mock_build_llm: MagicMock) -> None:
     """System prompt is injected as the first message in the conversation."""
     ai_msg = _make_ai_message(content="Response.")
     mock_model = _mock_model_returning(ai_msg)
-    mock_chat_cls.return_value = mock_model
+    mock_build_llm.return_value = mock_model
 
     invoker = ClaudeAgentInvoker(api_key=_PLACEHOLDER_KEY)
     system_prompt = "You are Harvey Specter, senior fraud analyst."
@@ -303,9 +303,9 @@ async def test_system_prompt_passed_correctly(mock_chat_cls: MagicMock) -> None:
 
 
 @patch("fraudai.agents.claude_invoker.asyncio.sleep", new_callable=AsyncMock)
-@patch("fraudai.agents.claude_invoker.ChatAnthropic")
+@patch("fraudai.agents.claude_invoker._build_llm")
 async def test_retry_on_api_error_recovers(
-    mock_chat_cls: MagicMock,
+    mock_build_llm: MagicMock,
     mock_sleep: AsyncMock,
 ) -> None:
     """Model fails twice then succeeds on third attempt."""
@@ -320,7 +320,7 @@ async def test_retry_on_api_error_recovers(
             ai_msg,
         ]
     )
-    mock_chat_cls.return_value = mock_model
+    mock_build_llm.return_value = mock_model
 
     invoker = ClaudeAgentInvoker(api_key=_PLACEHOLDER_KEY)
     state = _base_state()
@@ -333,15 +333,15 @@ async def test_retry_on_api_error_recovers(
 
 
 @patch("fraudai.agents.claude_invoker.asyncio.sleep", new_callable=AsyncMock)
-@patch("fraudai.agents.claude_invoker.ChatAnthropic")
+@patch("fraudai.agents.claude_invoker._build_llm")
 async def test_retry_exhausted_raises(
-    mock_chat_cls: MagicMock,
+    mock_build_llm: MagicMock,
     mock_sleep: AsyncMock,
 ) -> None:
     """Model fails all 3 attempts -- raises RuntimeError."""
     mock_model = MagicMock()
     mock_model.ainvoke = AsyncMock(side_effect=ConnectionError("API permanently down"))
-    mock_chat_cls.return_value = mock_model
+    mock_build_llm.return_value = mock_model
 
     invoker = ClaudeAgentInvoker(api_key=_PLACEHOLDER_KEY)
     state = _base_state()
@@ -358,9 +358,9 @@ async def test_retry_exhausted_raises(
 # ---------------------------------------------------------------------------
 
 
-@patch("fraudai.agents.claude_invoker.ChatAnthropic")
+@patch("fraudai.agents.claude_invoker._build_llm")
 async def test_token_usage_logged(
-    mock_chat_cls: MagicMock,
+    mock_build_llm: MagicMock,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Token usage metadata is logged when available."""
@@ -368,7 +368,7 @@ async def test_token_usage_logged(
         content="Done.",
         usage_metadata={"input_tokens": 250, "output_tokens": 80},
     )
-    mock_chat_cls.return_value = _mock_model_returning(ai_msg)
+    mock_build_llm.return_value = _mock_model_returning(ai_msg)
 
     invoker = ClaudeAgentInvoker(api_key=_PLACEHOLDER_KEY)
     state = _base_state()
@@ -383,13 +383,13 @@ async def test_token_usage_logged(
     assert "total=330" in token_logs[0].message
 
 
-@patch("fraudai.agents.claude_invoker.ChatAnthropic")
-async def test_no_token_usage_no_error(mock_chat_cls: MagicMock) -> None:
+@patch("fraudai.agents.claude_invoker._build_llm")
+async def test_no_token_usage_no_error(mock_build_llm: MagicMock) -> None:
     """Missing usage metadata does not cause an error."""
     ai_msg = _make_ai_message(content="Done.")
     # Ensure usage_metadata is not set (default AIMessage)
     ai_msg.usage_metadata = None  # type: ignore[assignment]
-    mock_chat_cls.return_value = _mock_model_returning(ai_msg)
+    mock_build_llm.return_value = _mock_model_returning(ai_msg)
 
     invoker = ClaudeAgentInvoker(api_key=_PLACEHOLDER_KEY)
     state = _base_state()
@@ -404,12 +404,12 @@ async def test_no_token_usage_no_error(mock_chat_cls: MagicMock) -> None:
 # ---------------------------------------------------------------------------
 
 
-@patch("fraudai.agents.claude_invoker.ChatAnthropic")
-async def test_empty_messages_state(mock_chat_cls: MagicMock) -> None:
+@patch("fraudai.agents.claude_invoker._build_llm")
+async def test_empty_messages_state(mock_build_llm: MagicMock) -> None:
     """Invocation works when state has an empty messages list."""
     ai_msg = _make_ai_message(content="Hello, how can I help?")
     mock_model = _mock_model_returning(ai_msg)
-    mock_chat_cls.return_value = mock_model
+    mock_build_llm.return_value = mock_model
 
     invoker = ClaudeAgentInvoker(api_key=_PLACEHOLDER_KEY)
     state = _base_state(messages=[])
@@ -432,15 +432,15 @@ async def test_empty_messages_state(mock_chat_cls: MagicMock) -> None:
 # ---------------------------------------------------------------------------
 
 
-@patch("fraudai.agents.claude_invoker.ChatAnthropic")
-async def test_no_tools_skips_bind(mock_chat_cls: MagicMock) -> None:
+@patch("fraudai.agents.claude_invoker._build_llm")
+async def test_no_tools_skips_bind(mock_build_llm: MagicMock) -> None:
     """When no tools are provided, bind_tools is NOT called."""
     ai_msg = _make_ai_message(content="No tools needed.")
 
     mock_model = MagicMock()
     mock_model.ainvoke = AsyncMock(return_value=ai_msg)
     mock_model.bind_tools = MagicMock()
-    mock_chat_cls.return_value = mock_model
+    mock_build_llm.return_value = mock_model
 
     invoker = ClaudeAgentInvoker(api_key=_PLACEHOLDER_KEY)
     state = _base_state()
@@ -457,11 +457,11 @@ async def test_no_tools_skips_bind(mock_chat_cls: MagicMock) -> None:
 # ---------------------------------------------------------------------------
 
 
-@patch("fraudai.agents.claude_invoker.ChatAnthropic")
-async def test_analysis_summary_with_short_content(mock_chat_cls: MagicMock) -> None:
+@patch("fraudai.agents.claude_invoker._build_llm")
+async def test_analysis_summary_with_short_content(mock_build_llm: MagicMock) -> None:
     """Content shorter than 20 chars returns None for analysis_summary."""
     ai_msg = _make_ai_message(content="OK")
-    mock_chat_cls.return_value = _mock_model_returning(ai_msg)
+    mock_build_llm.return_value = _mock_model_returning(ai_msg)
 
     invoker = ClaudeAgentInvoker(api_key=_PLACEHOLDER_KEY)
     state = _base_state()
@@ -471,15 +471,15 @@ async def test_analysis_summary_with_short_content(mock_chat_cls: MagicMock) -> 
     assert result["analysis_summary"] is None
 
 
-@patch("fraudai.agents.claude_invoker.ChatAnthropic")
-async def test_analysis_summary_includes_tool_count(mock_chat_cls: MagicMock) -> None:
+@patch("fraudai.agents.claude_invoker._build_llm")
+async def test_analysis_summary_includes_tool_count(mock_build_llm: MagicMock) -> None:
     """Analysis summary appends tool execution count when tools were used."""
     tool_call = {"name": "analyze_transactions", "args": {}, "id": "call_004"}
     ai_msg = _make_ai_message(
         content="Found 5 suspicious transactions in the dataset.",
         tool_calls=[tool_call],
     )
-    mock_chat_cls.return_value = _mock_model_returning(ai_msg)
+    mock_build_llm.return_value = _mock_model_returning(ai_msg)
 
     mock_tool = _make_mock_tool("analyze_transactions", {"count": 5})
 
@@ -497,8 +497,8 @@ async def test_analysis_summary_includes_tool_count(mock_chat_cls: MagicMock) ->
 # ---------------------------------------------------------------------------
 
 
-@patch("fraudai.agents.claude_invoker.ChatAnthropic")
-async def test_content_extraction_from_blocks(mock_chat_cls: MagicMock) -> None:
+@patch("fraudai.agents.claude_invoker._build_llm")
+async def test_content_extraction_from_blocks(mock_build_llm: MagicMock) -> None:
     """AIMessage with list content blocks is extracted correctly."""
     ai_msg = AIMessage(
         content=[
@@ -506,7 +506,7 @@ async def test_content_extraction_from_blocks(mock_chat_cls: MagicMock) -> None:
             {"type": "text", "text": "Second block."},
         ]
     )
-    mock_chat_cls.return_value = _mock_model_returning(ai_msg)
+    mock_build_llm.return_value = _mock_model_returning(ai_msg)
 
     invoker = ClaudeAgentInvoker(api_key=_PLACEHOLDER_KEY)
     state = _base_state()
@@ -523,13 +523,15 @@ async def test_content_extraction_from_blocks(mock_chat_cls: MagicMock) -> None:
 # ---------------------------------------------------------------------------
 
 
-@patch("fraudai.agents.graph._claude_invoker", None)
 @patch("fraudai.agents.graph.ClaudeAgentInvoker")
 async def test_graph_invoke_claude_agent_uses_singleton(
     mock_invoker_cls: MagicMock,
 ) -> None:
     """invoke_claude_agent in graph.py creates and reuses the singleton."""
-    from fraudai.agents.graph import invoke_claude_agent
+    import fraudai.agents.graph as graph_mod
+
+    # Reset singleton state for this test
+    graph_mod._claude_invoker = None
 
     mock_instance = MagicMock()
     mock_instance.invoke = AsyncMock(
@@ -543,10 +545,13 @@ async def test_graph_invoke_claude_agent_uses_singleton(
     mock_invoker_cls.return_value = mock_instance
 
     state = _base_state()
-    await invoke_claude_agent("harvey", "prompt", [], state)
-    await invoke_claude_agent("louis", "prompt2", [], state)
+    await graph_mod.invoke_claude_agent("harvey", "prompt", [], state)
+    await graph_mod.invoke_claude_agent("louis", "prompt2", [], state)
 
     # Constructor called only once (singleton)
     mock_invoker_cls.assert_called_once()
     # invoke called twice
     assert mock_instance.invoke.await_count == 2
+
+    # Clean up singleton
+    graph_mod._claude_invoker = None

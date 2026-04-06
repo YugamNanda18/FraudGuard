@@ -230,7 +230,8 @@ async def test_retrieve_with_reranker_fetches_more(
     # Reranker should be called with all raw results and top_k=2.
     mock_reranker.rerank.assert_called_once()
     rerank_call = mock_reranker.rerank.call_args
-    assert rerank_call.kwargs["top_k"] == 2
+    # top_k is passed as the third positional argument
+    assert rerank_call.args[2] == 2
 
 
 @pytest.mark.asyncio

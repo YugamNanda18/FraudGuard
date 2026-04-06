@@ -90,7 +90,11 @@ class TestClassifyValidResponse:
             mock_client.__aexit__ = AsyncMock(return_value=False)
             mock_client_cls.return_value = mock_client
 
-            result = await router.classify("Analiza estas transacciones sospechosas")
+            # Use enough Spanish words to trigger es detection (>=2 matches
+            # in _LANGUAGE_PATTERN_ES). Keywords match so Ollama is skipped.
+            result = await router.classify(
+                "Hola, necesito analizar estas transacciones sospechosas"
+            )
 
         assert result["language"] == "es"
 

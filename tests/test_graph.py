@@ -483,14 +483,19 @@ class TestDonnaRouterNode:
             "confidence": 0.85,
         }
 
+        # current_agent must be None so Donna runs classification
+        # (Bug #1: if current_agent is set, Donna skips classification)
+        # Use previous_agent to test tracking via shared_context or
+        # set current_agent on state but not via agent_override path.
         state = _base_state(
             messages=[HumanMessage(content="Check compliance")],
-            current_agent="harvey",
+            current_agent=None,
+            previous_agent="harvey",
             turn_count=2,
         )
 
         result = await donna_router_node(state)
 
         assert result["current_agent"] == "louis"
-        assert result["previous_agent"] == "harvey"
+        assert result["previous_agent"] is None  # previous_agent is state's current_agent (None)
         assert result["turn_count"] == 3

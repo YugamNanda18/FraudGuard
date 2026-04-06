@@ -322,7 +322,7 @@ Louis.
 # ---------------------------------------------------------------------------
 
 AGENT_PROMPTS: dict[str, str] = {
-    "donna": DONNA_SYSTEM_PROMPT,
+    # NOTE: Donna uses _CLASSIFY_SYSTEM_PROMPT in donna.py, not this dict.
     "harvey": HARVEY_SYSTEM_PROMPT,
     "louis": LOUIS_SYSTEM_PROMPT,
     "jessica": JESSICA_SYSTEM_PROMPT,

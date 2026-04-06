@@ -31,10 +31,14 @@ class SessionData(BaseModel):
     turn_count: int = 0
 
 
+_MAX_SESSIONS = 1000
+
+
 class SessionManager:
     """Manages chat sessions with metadata tracking.
 
     Thread-safe for single-process async usage (no cross-process locking).
+    Evicts the oldest session when ``_MAX_SESSIONS`` is exceeded.
     """
 
     def __init__(self) -> None:
@@ -42,6 +46,11 @@ class SessionManager:
 
     def create_session(self, tenant_id: str, tier: str) -> str:
         """Create a new session and return its ID."""
+        if len(self._sessions) >= _MAX_SESSIONS:
+            oldest_key = next(iter(self._sessions))
+            del self._sessions[oldest_key]
+            logger.info("Session evicted (max %d reached): %s", _MAX_SESSIONS, oldest_key)
+
         session_id = str(uuid.uuid4())
         self._sessions[session_id] = SessionData(
             session_id=session_id,
@@ -59,6 +68,17 @@ class SessionManager:
     def get_session(self, session_id: str) -> SessionData | None:
         """Return session data or None if not found."""
         return self._sessions.get(session_id)
+
+    def ensure_session(self, session_id: str, tenant_id: str, tier: str) -> str:
+        """Register a session if not already tracked. Returns the session ID."""
+        if session_id not in self._sessions:
+            self._sessions[session_id] = SessionData(
+                session_id=session_id,
+                tenant_id=tenant_id,
+                tier=tier,
+            )
+            logger.info("Session registered via ensure_session: %s", session_id)
+        return session_id
 
     def delete_session(self, session_id: str) -> bool:
         """Delete a session. Returns True if it existed."""

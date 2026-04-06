@@ -9,6 +9,7 @@ legal context into their LLM prompts.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -138,8 +139,8 @@ class LegalRetriever:
 
         start = _time.monotonic()
 
-        # Step 1: Encode the query (dense + sparse).
-        embeddings = self._embedder.encode([query])
+        # Step 1: Encode the query (dense + sparse) in a thread to avoid blocking.
+        embeddings = await asyncio.to_thread(self._embedder.encode, [query])
         dense_vector: list[float] = embeddings[0]["dense"]
         sparse_dict: dict[str, Any] = embeddings[0]["sparse"]
 
@@ -164,9 +165,9 @@ class LegalRetriever:
         # Step 3: Convert raw results to RetrievalResult models.
         results = self._parse_results(raw_results, target_collection)
 
-        # Step 4: Rerank if a reranker is available.
+        # Step 4: Rerank if a reranker is available (in thread to avoid blocking).
         if self._reranker is not None and results:
-            results = self._reranker.rerank(query, results, top_k=final_k)
+            results = await asyncio.to_thread(self._reranker.rerank, query, results, final_k)
         else:
             results = results[:final_k]
 

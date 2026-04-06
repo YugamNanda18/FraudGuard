@@ -42,6 +42,10 @@ class _TFIDFSparseEncoder:
     def encode(self, texts: list[str]) -> list[dict[str, Any]]:
         """Return sparse representations as ``{"indices": [...], "values": [...]}``."""
         if not self._fitted:
+            logger.warning(
+                "TFIDFSparseEncoder auto-fitting on current batch — "
+                "vocabulary may be inconsistent for retrieval"
+            )
             self.fit(texts)
         matrix = self._vectorizer.transform(texts)
         results: list[dict[str, Any]] = []

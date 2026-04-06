@@ -100,6 +100,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.state.feedback_store = feedback_store
     app.state.tool_registry = tool_registry
     app.state.retriever = retriever
+    app.state.embedder = embedder if retriever is not None else None
 
     yield
 
@@ -132,9 +133,13 @@ def create_app() -> FastAPI:
 
     # --- CORS ---
     # Permissive in development; lock down in production via env config.
+    allow_origins = (
+        ["*"] if settings.environment == "development"
+        else [o.strip() for o in settings.cors_allowed_origins.split(",") if o.strip()]
+    )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"] if settings.environment == "development" else [],
+        allow_origins=allow_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

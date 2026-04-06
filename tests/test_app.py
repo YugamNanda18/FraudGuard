@@ -81,7 +81,7 @@ class TestLifespan:
             assert app.state.store is not None
             assert hasattr(app.state, "session_manager")
             assert hasattr(app.state, "feedback_store")
-            assert isinstance(app.state.feedback_store, list)
+            assert hasattr(app.state.feedback_store, "append")
 
     @patch("fraudai.agents.graph.build_fraud_ai_graph")
     @patch("fraudai.rag.qdrant_store.QdrantStore.initialize", new_callable=AsyncMock)

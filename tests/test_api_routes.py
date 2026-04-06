@@ -100,7 +100,25 @@ def session_manager() -> SessionManager:
 
 
 @pytest.fixture()
-def app(mock_graph: MagicMock, mock_store: MagicMock, session_manager: SessionManager) -> FastAPI:
+def mock_embedder() -> MagicMock:
+    """Create a mock EmbeddingGenerator."""
+    embedder = MagicMock()
+    embedder.encode.return_value = [
+        {
+            "dense": [0.1] * 1024,
+            "sparse": {"indices": [1, 5, 10], "values": [0.8, 0.5, 0.3]},
+        },
+    ]
+    return embedder
+
+
+@pytest.fixture()
+def app(
+    mock_graph: MagicMock,
+    mock_store: MagicMock,
+    session_manager: SessionManager,
+    mock_embedder: MagicMock,
+) -> FastAPI:
     """Create a test FastAPI app with mocked dependencies."""
     from fraudai.api.routes import router
 
@@ -112,6 +130,7 @@ def app(mock_graph: MagicMock, mock_store: MagicMock, session_manager: SessionMa
     test_app.state.store = mock_store
     test_app.state.session_manager = session_manager
     test_app.state.feedback_store = []
+    test_app.state.embedder = mock_embedder
 
     return test_app
 
@@ -147,7 +166,9 @@ def _mock_settings(with_claude: bool = False) -> MagicMock:
     """Create a mock settings object for health checks."""
     values = {
         "ollama_host": "http://localhost:11434",
+        "llm_provider": "anthropic" if with_claude else "groq",
         "anthropic_api_key": _TEST_ANTHROPIC_PLACEHOLDER if with_claude else "",
+        "groq_api_key": "",
     }
     return MagicMock(**values)
 
@@ -297,9 +318,9 @@ async def test_chat_stream_returns_sse(client: httpx.AsyncClient, mock_graph: Ma
     assert token_events[0]["content"] == "Hello "
     assert token_events[1]["content"] == "world"
 
-    tool_events = [e for e in events if e["type"] == "tool_end"]
+    tool_events = [e for e in events if e["type"] == "tool_result"]
     assert len(tool_events) == 1
-    assert tool_events[0]["tool_name"] == "analyze_transactions"
+    assert tool_events[0]["tool_result"]["tool_name"] == "analyze_transactions"
 
     done_events = [e for e in events if e["type"] == "done"]
     assert len(done_events) == 1

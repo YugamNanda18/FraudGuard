@@ -148,12 +148,15 @@ class ClaudeAgentInvoker:
             from langchain_core.messages import ToolMessage
 
             messages_with_tools = [*messages, ai_message]
+            used_ids: set[str] = set()
             for tr in tool_results:
                 tool_call_id = ""
                 for tc in getattr(ai_message, "tool_calls", []):
+                    tc_id = tc.get("id", "") if isinstance(tc, dict) else getattr(tc, "id", "")
                     tc_name = tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", "")
-                    if tc_name == tr["tool_name"]:
-                        tool_call_id = tc.get("id", "") if isinstance(tc, dict) else getattr(tc, "id", "")
+                    if tc_name == tr["tool_name"] and tc_id not in used_ids:
+                        tool_call_id = tc_id
+                        used_ids.add(tc_id)
                         break
                 messages_with_tools.append(
                     ToolMessage(
@@ -201,7 +204,7 @@ class ClaudeAgentInvoker:
         messages.extend(state_messages)
         return messages
 
-    def _bind_tools(self, tools: list[Any]) -> ChatAnthropic:
+    def _bind_tools(self, tools: list[Any]) -> BaseChatModel:
         """Return a model copy with tools bound, or the bare model if no tools."""
         if tools:
             return self._model.bind_tools(tools)  # type: ignore[return-value]
@@ -258,8 +261,10 @@ class ClaudeAgentInvoker:
         """Execute any tool calls present in the AI message.
 
         Returns a list of dicts with keys ``tool_name``, ``tool_input``,
-        ``tool_output``, and ``status``.
+        ``tool_output``, ``result``, ``status``, and ``duration_ms``.
         """
+        import time as _time
+
         tool_calls = getattr(ai_message, "tool_calls", None)
         if not tool_calls:
             return []
@@ -286,7 +291,9 @@ class ClaudeAgentInvoker:
                         "tool_name": tool_name,
                         "tool_input": tool_args,
                         "tool_output": None,
+                        "result": None,
                         "status": "error",
+                        "duration_ms": 0,
                         "error": f"Tool '{tool_name}' not found in agent tool list",
                     }
                 )
@@ -295,13 +302,17 @@ class ClaudeAgentInvoker:
 
             try:
                 tool_fn = tool_map[tool_name]
+                start = _time.monotonic()
                 output = await tool_fn.ainvoke(tool_args)
+                duration_ms = int((_time.monotonic() - start) * 1000)
                 results.append(
                     {
                         "tool_name": tool_name,
                         "tool_input": tool_args,
                         "tool_output": output,
+                        "result": output if isinstance(output, dict) else {"output": str(output)},
                         "status": "success",
+                        "duration_ms": duration_ms,
                     }
                 )
                 logger.info("Tool '%s' executed successfully", tool_name)
@@ -311,7 +322,9 @@ class ClaudeAgentInvoker:
                         "tool_name": tool_name,
                         "tool_input": tool_args,
                         "tool_output": None,
+                        "result": None,
                         "status": "error",
+                        "duration_ms": 0,
                         "error": str(exc),
                     }
                 )

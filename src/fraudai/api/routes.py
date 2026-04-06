@@ -111,11 +111,26 @@ def _extract_tool_results(state: dict[str, Any]) -> list[ToolResult]:
 
 
 def _extract_response_text(state: dict[str, Any]) -> str:
-    """Extract the final response text from the last AIMessage in state."""
+    """Extract the final response text from the last AIMessage in state.
+
+    Filters out non-text content blocks (e.g. tool_use) to avoid leaking
+    raw tool invocations into the user-visible response.
+    """
     messages = state.get("messages", [])
     for msg in reversed(messages):
         if isinstance(msg, AIMessage):
-            return msg.content if isinstance(msg.content, str) else str(msg.content)
+            content = msg.content
+            if isinstance(content, str) and content.strip():
+                return content
+            if isinstance(content, list):
+                text_parts = [
+                    b.get("text", "") if isinstance(b, dict) and b.get("type") == "text"
+                    else b if isinstance(b, str) else ""
+                    for b in content
+                ]
+                joined = "\n".join(p for p in text_parts if p)
+                if joined.strip():
+                    return joined
     return "No response generated."
 
 
@@ -161,14 +176,7 @@ async def chat(
     if session_id is None:
         session_id = session_mgr.create_session(tenant_id=user.tenant_id, tier=user.tier)
     elif session_mgr.get_session(session_id) is None:
-        # Session ID provided but not tracked -- register it
-        from fraudai.api.session_manager import SessionData
-
-        session_mgr._sessions[session_id] = SessionData(
-            session_id=session_id,
-            tenant_id=user.tenant_id,
-            tier=user.tier,
-        )
+        session_mgr.ensure_session(session_id, user.tenant_id, user.tier)
 
     # Build input state
     input_state: dict[str, Any] = {
@@ -243,6 +251,8 @@ async def chat_stream(
     session_id = request_body.session_id
     if session_id is None:
         session_id = session_mgr.create_session(tenant_id=user.tenant_id, tier=user.tier)
+    elif session_mgr.get_session(session_id) is None:
+        session_mgr.ensure_session(session_id, user.tenant_id, user.tier)
 
     input_state: dict[str, Any] = {
         "messages": [HumanMessage(content=request_body.message)],
@@ -310,6 +320,9 @@ async def chat_stream(
                     tool_results_acc.append(tool_result)
                     payload = {"type": "tool_result", "tool_result": tool_result}
                     yield f"data: {json.dumps(payload)}\n\n"
+
+            # Record turn in session before completing
+            session_mgr.record_turn(session_id, agent_name)
 
             # Build complete ChatResponse for done event
             latency_ms = int((time.monotonic() - start_time) * 1000)
@@ -411,12 +424,29 @@ async def upload_file(
     indexed = False
     try:
         collection_name = await store.create_session_collection(session_id)
-        # Minimal chunking for MVP -- split by paragraphs
         text_content = content.decode("utf-8", errors="replace")
-        chunks = _simple_chunk(text_content, file_id=file_id, filename=filename)
-        if chunks:
-            chunks_generated = await store.upsert_chunks(collection_name, chunks)
-            indexed = True
+        raw_chunks = _split_paragraphs(text_content, file_id=file_id, filename=filename)
+        if raw_chunks:
+            embedder = getattr(request.app.state, "embedder", None)
+            if embedder is None:
+                logger.warning(
+                    "Embedder not available on app.state — skipping indexing for file %s",
+                    file_id,
+                )
+            else:
+                texts = [c["text"] for c in raw_chunks]
+                embeddings = embedder.encode(texts)
+                for chunk, emb in zip(raw_chunks, embeddings, strict=True):
+                    chunk["dense_vector"] = emb["dense"]
+                    sparse_data = emb.get("sparse")
+                    if sparse_data and sparse_data.get("indices"):
+                        from qdrant_client import models as _qmodels
+                        chunk["sparse_vector"] = _qmodels.SparseVector(
+                            indices=sparse_data["indices"],
+                            values=sparse_data["values"],
+                        )
+                chunks_generated = await store.upsert_chunks(collection_name, raw_chunks)
+                indexed = True
         logger.info(
             "Indexed %d chunks for file %s in session %s",
             chunks_generated,
@@ -438,14 +468,16 @@ async def upload_file(
     )
 
 
-def _simple_chunk(
+def _split_paragraphs(
     text: str,
     file_id: str,
     filename: str,
     max_chunk_size: int = 1000,
 ) -> list[dict[str, Any]]:
-    """Split text into simple chunks for MVP indexing.
+    """Split text into paragraph-based chunks for indexing.
 
+    Returns chunk dicts without embeddings; the caller is responsible for
+    populating ``dense_vector`` and ``sparse_vector`` from the embedder.
     Production should use RecursiveCharacterTextSplitter with overlap.
     """
     paragraphs = text.split("\n\n")
@@ -457,7 +489,7 @@ def _simple_chunk(
             chunks.append(
                 {
                     "text": current_chunk.strip(),
-                    "dense_vector": [0.0] * 1024,  # Placeholder -- real embeddings in production
+                    "dense_vector": [0.0] * 1024,
                     "sparse_vector": None,
                     "metadata": {
                         "file_id": file_id,
@@ -729,7 +761,7 @@ async def health(request: Request) -> HealthResponse:
                         "anthropic-version": "2023-06-01",
                     },
                 )
-                llm_ok = resp.status_code in (200, 401, 405)
+                llm_ok = resp.status_code in (200, 405)
         else:
             logger.warning("LLM API key not configured for provider '%s'", provider)
     except Exception:

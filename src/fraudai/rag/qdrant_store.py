@@ -279,14 +279,14 @@ class QdrantStore:
     # Session collections (per-tenant, ephemeral)
     # ------------------------------------------------------------------
 
-    async def create_session_collection(self, tenant_id: str) -> str:
-        """Create an ephemeral collection for a tenant session.
+    async def create_session_collection(self, session_id: str) -> str:
+        """Create an ephemeral collection for a session.
 
         Session collections use dense vectors only (no sparse).
 
         Returns the collection name.
         """
-        collection_name = f"session_{tenant_id}"
+        collection_name = f"session_{session_id}"
 
         collections = await self._client.get_collections()
         existing = {c.name for c in collections.collections}
@@ -309,9 +309,9 @@ class QdrantStore:
         logger.info("Created session collection '%s'", collection_name)
         return collection_name
 
-    async def delete_session_collection(self, tenant_id: str) -> None:
-        """Delete a tenant session collection."""
-        collection_name = f"session_{tenant_id}"
+    async def delete_session_collection(self, session_id: str) -> None:
+        """Delete a session collection."""
+        collection_name = f"session_{session_id}"
         await self._client.delete_collection(collection_name=collection_name)
         logger.info("Deleted session collection '%s'", collection_name)
 

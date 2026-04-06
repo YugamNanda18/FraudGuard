@@ -285,16 +285,24 @@ class BOEIngestionPipeline:
     async def _already_indexed(self, doc_id: str) -> bool:
         """Check if a document is already indexed with the current corpus version."""
         try:
-            results = await self._store.hybrid_search(
-                collection=QdrantStore.BOE_COLLECTION,
-                dense_vector=[0.0] * 1024,  # dummy vector — we only care about filter match
-                filters={
-                    "boe_id": doc_id,
-                    "version_corpus": self._corpus_version,
-                },
+            from qdrant_client import models
+
+            result = await self._store._client.scroll(
+                collection_name=QdrantStore.BOE_COLLECTION,
+                scroll_filter=models.Filter(must=[
+                    models.FieldCondition(
+                        key="boe_id",
+                        match=models.MatchValue(value=doc_id),
+                    ),
+                    models.FieldCondition(
+                        key="version_corpus",
+                        match=models.MatchValue(value=self._corpus_version),
+                    ),
+                ]),
                 limit=1,
             )
-            return len(results) > 0
+            points, _ = result
+            return len(points) > 0
         except Exception:
             return False
 
