@@ -1,0 +1,11 @@
+transaction_id,amount,account_id,merchant,category,timestamp,is_fraud
+TXN001,150.00,ACC001,Amazon,retail,2024-01-15T10:30:00,0
+TXN002,3200.50,ACC002,Wire Transfer,transfer,2024-01-15T11:00:00,1
+TXN003,45.99,ACC001,Starbucks,food,2024-01-15T12:15:00,0
+TXN004,8900.00,ACC003,Crypto Exchange,crypto,2024-01-15T13:00:00,1
+TXN005,22.50,ACC004,Gas Station,fuel,2024-01-15T14:30:00,0
+TXN006,1500.00,ACC002,Unknown Merchant,other,2024-01-15T15:00:00,1
+TXN007,75.00,ACC005,Netflix,subscription,2024-01-15T16:00:00,0
+TXN008,12000.00,ACC003,Offshore Bank,transfer,2024-01-15T17:00:00,1
+TXN009,33.99,ACC001,Spotify,subscription,2024-01-15T18:00:00,0
+TXN010,500.00,ACC006,ATM Withdrawal,cash,2024-01-15T19:00:00,0

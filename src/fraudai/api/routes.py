@@ -21,12 +21,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 import httpx as httpx_client
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import Response, StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.types import Command
 
-from fraudai.api.auth import User, get_admin_user, get_current_user
+from fraudai.api.auth import User, create_token, get_admin_user, get_current_user
 from fraudai.api.schemas import (
     ChatRequest,
     ChatResponse,
@@ -37,6 +37,7 @@ from fraudai.api.schemas import (
     HealthResponse,
     ResponseMetadata,
     SessionInfo,
+    TokenResponse,
     ToolResult,
 )
 from fraudai.core.config import settings
@@ -143,6 +144,50 @@ def _build_metadata(state: dict[str, Any], latency_ms: int) -> ResponseMetadata:
         tokens_used=shared.get("tokens_used", 0),
         latency_ms=latency_ms,
         corpus_version=shared.get("corpus_version", "unknown"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Auth (SR-010 — OAuth2/JWT)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/auth/token", response_model=TokenResponse)
+async def login(
+    username: str = Form(),
+    password: str = Form(),
+) -> TokenResponse:
+    """Issue a JWT access token via OAuth2 password grant.
+
+    **MVP behaviour:**
+    In ``development`` and ``staging`` environments, any credentials are
+    accepted and a valid JWT is returned.  This lets the frontend and
+    integration tests obtain real tokens without a user store.
+
+    In ``production``, returns HTTP 501 until a proper user store is
+    wired (Phase F6).
+
+    The returned token can be passed as ``Authorization: Bearer <token>``
+    to all authenticated endpoints.
+    """
+    from fraudai.api.auth import JWT_EXPIRATION_HOURS
+
+    if settings.environment in ("development", "staging"):
+        token = create_token(
+            user_id=username,
+            tenant_id="default",
+            tier="enterprise",
+            email=f"{username}@fraudai.local",
+        )
+        return TokenResponse(
+            access_token=token,
+            token_type="bearer",
+            expires_in=JWT_EXPIRATION_HOURS * 3600,
+        )
+
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Production authentication not configured.",
     )
 
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
@@ -28,6 +29,47 @@ if TYPE_CHECKING:
     from fraudai.rag.reranker import Reranker
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Query analysis — extract law references for metadata filtering
+# ---------------------------------------------------------------------------
+
+# Matches patterns like "ley 10/2010", "real decreto 11/2005", "RD-ley 8/2020",
+# "ley organica 3/2007", etc.  Captures the number/year pair.
+_RE_LAW_REF = re.compile(
+    r"(?:ley\s+(?:org[aá]nica\s+)?|real\s+decreto(?:-ley)?\s+|rd-?ley\s+|"
+    r"orden\s+|circular\s+|resoluci[oó]n\s+)"
+    r"(\d{1,4})\s*/\s*(\d{4})",
+    re.IGNORECASE,
+)
+
+# Matches a standalone BOE ID like "BOE-A-2010-6737".
+_RE_BOE_ID = re.compile(r"\b(BOE-[A-Z]-\d{4}-\d+)\b", re.IGNORECASE)
+
+
+def _extract_query_filters(query: str) -> dict[str, Any] | None:
+    """Analyse a user query for explicit law references.
+
+    When the user mentions a specific law (e.g. "ley 10/2010") we can
+    derive a ``norma_titulo`` text-match filter that dramatically
+    improves precision by scoping the search to the right legislation.
+
+    Returns ``None`` when no structured reference is found.
+    """
+    # Check for explicit BOE ID first (most specific).
+    m_boe = _RE_BOE_ID.search(query)
+    if m_boe:
+        return {"boe_id": m_boe.group(1).upper()}
+
+    # Check for law number/year references.
+    m_law = _RE_LAW_REF.search(query)
+    if m_law:
+        number = m_law.group(1)
+        year = m_law.group(2)
+        # Build a substring that will appear in norma_titulo, e.g. "10/2010".
+        return {"norma_titulo_contains": f"{number}/{year}"}
+
+    return None
 
 # ---------------------------------------------------------------------------
 # Models
@@ -139,6 +181,17 @@ class LegalRetriever:
 
         start = _time.monotonic()
 
+        # Step 0: Analyse the query for explicit law references (e.g.
+        # "ley 10/2010") and merge extracted filters with any caller-
+        # supplied filters.  This dramatically improves precision when
+        # the user asks about a specific law.
+        merged_filters = dict(filters) if filters else {}
+        query_filters = _extract_query_filters(query)
+        if query_filters:
+            for key, value in query_filters.items():
+                merged_filters.setdefault(key, value)
+            logger.info("Query analysis extracted filters: %s", query_filters)
+
         # Step 1: Encode the query (dense + sparse) in a thread to avoid blocking.
         embeddings = await asyncio.to_thread(self._embedder.encode, [query])
         dense_vector: list[float] = embeddings[0]["dense"]
@@ -154,13 +207,32 @@ class LegalRetriever:
         # Step 2: Hybrid search. Fetch more if reranking is enabled.
         search_limit = self._rerank_k if self._reranker is not None else final_k
 
+        effective_filters = merged_filters or None
         raw_results = await self._store.hybrid_search(
             collection=target_collection,
             dense_vector=dense_vector,
             sparse_vector=sparse_vector,
-            filters=filters,
+            filters=effective_filters,
             limit=search_limit,
         )
+
+        # If filtered search returned too few results, retry without the
+        # auto-extracted filters to avoid empty responses when the filter
+        # is too restrictive (e.g. norma_titulo substring not indexed).
+        if len(raw_results) < final_k and query_filters and not filters:
+            logger.info(
+                "Filtered search returned only %d results (need %d), "
+                "retrying without auto-extracted filters",
+                len(raw_results),
+                final_k,
+            )
+            raw_results = await self._store.hybrid_search(
+                collection=target_collection,
+                dense_vector=dense_vector,
+                sparse_vector=sparse_vector,
+                filters=None,
+                limit=search_limit,
+            )
 
         # Step 3: Convert raw results to RetrievalResult models.
         results = self._parse_results(raw_results, target_collection)

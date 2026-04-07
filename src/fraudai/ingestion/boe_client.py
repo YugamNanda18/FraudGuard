@@ -318,7 +318,14 @@ class BOEClient:
             return (el.text or "").strip() if el is not None else ""
 
         identificador = _text(meta_el, "identificador")
-        titulo = _text(meta_el, "titulo")
+        # The BOE XML may store the title under <titulo>, <titulo_corto>,
+        # or (for consolidated texts) <titulo_documento>.  Try them in
+        # order of preference so we always get a meaningful norma_titulo.
+        titulo = (
+            _text(meta_el, "titulo")
+            or _text(meta_el, "titulo_corto")
+            or _text(meta_el, "titulo_documento")
+        )
         fecha_pub = _text(meta_el, "fecha_publicacion")
         fecha_disp = _text(meta_el, "fecha_disposicion")
         rango = _text(meta_el, "rango")

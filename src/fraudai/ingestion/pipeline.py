@@ -197,6 +197,12 @@ class BOEIngestionPipeline:
         # 2. Extract structured text
         extracted = self._extractor.extract(boe_doc.texto)
 
+        # The text extractor may fail to find the title when the input is
+        # plain text (no HTML headings).  Fall back to the BOE XML metadata
+        # title which is always populated.
+        if hasattr(extracted, "titulo") and not extracted.titulo and boe_doc.meta.titulo:
+            extracted.titulo = boe_doc.meta.titulo
+
         # 3. Chunk — the chunker expects (ExtractedDocument, BOEDocumentMeta)
         chunks: list[LegalChunk] = self._chunker.chunk_document(extracted, boe_doc.meta)
 

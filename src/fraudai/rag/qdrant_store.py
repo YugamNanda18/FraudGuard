@@ -26,6 +26,7 @@ class QdrantStore:
     # Payload fields that require indexing for efficient filtering.
     _BOE_PAYLOAD_INDEXES: list[tuple[str, models.PayloadSchemaType]] = [
         ("boe_id", models.PayloadSchemaType.KEYWORD),
+        ("norma_titulo", models.PayloadSchemaType.TEXT),
         ("materia_codigo", models.PayloadSchemaType.KEYWORD),
         ("fecha_publicacion", models.PayloadSchemaType.DATETIME),
         ("estado_consolidacion", models.PayloadSchemaType.KEYWORD),
@@ -236,13 +237,27 @@ class QdrantStore:
     ) -> models.Filter:
         """Convert a flat filter dict to a Qdrant Filter.
 
-        Supports two formats:
-            Simple:  ``{"field": "value"}``
-            Nested:  ``{"field": {"match": {"value": "..."}}}``
+        Supports three formats:
+            Simple:    ``{"field": "value"}``         -> MatchValue (exact)
+            Nested:    ``{"field": {"match": {"value": "..."}}}``  -> MatchValue
+            Contains:  ``{"field_contains": "substr"}`` -> MatchText (substring)
+
+        Keys ending with ``_contains`` trigger a full-text substring match
+        on the field named before the suffix (e.g. ``norma_titulo_contains``
+        filters on the ``norma_titulo`` payload field).
         """
         conditions: list[models.FieldCondition] = []
         for key, value in filters.items():
-            if isinstance(value, dict) and "match" in value:
+            # Substring / full-text filter via MatchText.
+            if key.endswith("_contains"):
+                field_name = key.removesuffix("_contains")
+                conditions.append(
+                    models.FieldCondition(
+                        key=field_name,
+                        match=models.MatchText(text=str(value)),
+                    ),
+                )
+            elif isinstance(value, dict) and "match" in value:
                 conditions.append(
                     models.FieldCondition(
                         key=key,

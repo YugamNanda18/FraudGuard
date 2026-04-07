@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     groq_api_key: str = ""
 
+    # Auth / JWT
+    jwt_secret: str = "fraudai-dev-secret-change-in-production"
+
     # App
     log_level: str = "INFO"
     environment: str = "development"

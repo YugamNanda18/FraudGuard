@@ -112,14 +112,26 @@ class LegalChunker:
         doc: ExtractedDocument,
         doc_meta: BOEDocumentMeta,
     ) -> ChunkMetadata:
-        """Create a base metadata object from document and BOE metadata."""
+        """Create a base metadata object from document and BOE metadata.
+
+        The authoritative title comes from ``doc_meta.titulo`` (parsed from
+        the BOE XML ``<metadatos>`` section) because the text extractor
+        often receives plain-text content without HTML heading tags, which
+        causes ``ExtractedDocument.titulo`` to be empty or unreliable.
+        We fall back to ``doc.titulo`` only when the metadata title is
+        missing.
+        """
         materia_codigo = ""
         if doc_meta.materias:
             materia_codigo = doc_meta.materias[0]
 
+        # Prefer the BOE metadata title (always present in XML) over the
+        # extractor title (may be empty when <texto> lacks HTML headings).
+        norma_titulo = doc_meta.titulo or doc.titulo
+
         return ChunkMetadata(
             boe_id=doc_meta.identificador,
-            norma_titulo=doc.titulo,
+            norma_titulo=norma_titulo,
             articulo="",
             seccion="",
             rango=doc_meta.rango,

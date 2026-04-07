@@ -81,6 +81,7 @@ async def test_initialize_creates_payload_indexes(
     ]
     expected_fields = [
         "boe_id",
+        "norma_titulo",
         "materia_codigo",
         "fecha_publicacion",
         "estado_consolidacion",

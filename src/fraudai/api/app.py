@@ -61,12 +61,39 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     from fraudai.agents.tool_registry import ToolRegistry
     from fraudai.ingestion.embeddings import EmbeddingGenerator
     from fraudai.rag.retriever import LegalRetriever
+    from fraudai.tools.implementations import ToolImplementations
+    from fraudai.tools.sandbox import SandboxEngine
 
     try:
         embedder = EmbeddingGenerator(device="cpu")
         retriever = LegalRetriever(store=store, embedder=embedder)
-        tool_registry = ToolRegistry(retriever=retriever)
-        logger.info("ToolRegistry initialized with LegalRetriever")
+
+        # Attempt to initialise the sandbox for real tool implementations.
+        # If Docker is unavailable or the sandbox image is missing, gracefully
+        # degrade to stubs — never crash the startup.
+        sandbox: SandboxEngine | None = None
+        tool_impls: ToolImplementations | None = None
+        try:
+            sandbox = SandboxEngine()
+            sandbox_healthy = await sandbox.health_check()
+            if sandbox_healthy:
+                tool_impls = ToolImplementations(sandbox=sandbox)
+                logger.info("SandboxEngine healthy — real tool implementations enabled")
+            else:
+                logger.warning("Sandbox not healthy — tools will use stubs")
+        except Exception:
+            logger.exception("Sandbox initialization failed — tools will use stubs")
+
+        tool_registry = ToolRegistry(
+            retriever=retriever,
+            sandbox=sandbox,
+            tool_impls=tool_impls,
+        )
+        logger.info(
+            "ToolRegistry initialized (retriever=LegalRetriever, sandbox=%s, tool_impls=%s)",
+            "enabled" if sandbox is not None else "disabled",
+            "enabled" if tool_impls is not None else "stubs",
+        )
     except Exception:
         logger.exception("ToolRegistry initialization failed — tools will use stubs")
         tool_registry = None  # type: ignore[assignment]
