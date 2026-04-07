@@ -223,6 +223,12 @@ async def chat(
     elif session_mgr.get_session(session_id) is None:
         session_mgr.ensure_session(session_id, user.tenant_id, user.tier)
 
+    # Get previous agent from session history for conversational continuity
+    session_data = session_mgr.get_session(session_id)
+    previous_agent = None
+    if session_data and session_data.agent_history:
+        previous_agent = session_data.agent_history[-1]
+
     # Build input state — reset current_agent so Donna re-classifies each turn
     input_state: dict[str, Any] = {
         "messages": [HumanMessage(content=request_body.message)],
@@ -231,6 +237,7 @@ async def chat(
         "user_tier": user.tier,
         "language": request_body.language,
         "current_agent": None,  # Force Donna to re-classify on every message
+        "previous_agent": previous_agent,  # For conversational continuity
         "escalation_request": None,  # Clear any previous escalation
     }
 

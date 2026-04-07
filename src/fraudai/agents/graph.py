@@ -193,8 +193,19 @@ async def donna_router_node(state: AgentState) -> dict[str, Any]:
 
     classification = await classify_intent_local(user_text)
 
+    agent = classification.get("agent")
+
+    # Conversational continuity: if Donna can't classify (no keywords match)
+    # and there was a previous agent in this session, continue with that agent.
+    if agent is None and state.get("previous_agent"):
+        agent = state["previous_agent"]
+        logger.info(
+            "Donna: no keyword match, continuing with previous agent '%s'",
+            agent,
+        )
+
     return {
-        "current_agent": classification.get("agent"),
+        "current_agent": agent,
         "previous_agent": state.get("current_agent"),
         "language": classification.get("language", "es"),
         "turn_count": state.get("turn_count", 0) + 1,
