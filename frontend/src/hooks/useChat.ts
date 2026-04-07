@@ -36,6 +36,9 @@ export function useChat() {
   const [currentAgent, setCurrentAgent] = useState<AgentName | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
+  const streamBufferRef = useRef<string>("");
+  const rafRef = useRef<number | null>(null);
+  const assistantIdRef = useRef<string>("");
 
   // -----------------------------------------------------------------------
   // Send a chat message (streaming)
@@ -68,6 +71,24 @@ export function useChat() {
       ]);
 
       setIsStreaming(true);
+      streamBufferRef.current = "";
+      assistantIdRef.current = assistantId;
+
+      // Flush accumulated tokens to React state at ~30fps
+      // This prevents React 18 batching from swallowing individual token updates
+      const flushBuffer = () => {
+        const buf = streamBufferRef.current;
+        const aid = assistantIdRef.current;
+        if (buf) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === aid ? { ...m, content: buf } : m,
+            ),
+          );
+        }
+        rafRef.current = requestAnimationFrame(flushBuffer);
+      };
+      rafRef.current = requestAnimationFrame(flushBuffer);
 
       const controller = streamChat(
         {
@@ -76,15 +97,9 @@ export function useChat() {
           agent_override: agentOverride ?? null,
           language: "es",
         },
-        // onToken — progressive text
+        // onToken — accumulate in ref, RAF flushes to state
         (token: string) => {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantId
-                ? { ...m, content: m.content + token }
-                : m,
-            ),
-          );
+          streamBufferRef.current += token;
         },
         // onToolStart
         (toolName: string) => {
@@ -114,16 +129,21 @@ export function useChat() {
             }),
           );
         },
-        // onDone — final response with metadata
+        // onDone — stop RAF, set final content with metadata
         (response: ChatResponse) => {
+          if (rafRef.current) cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+
           setSessionId(response.session_id);
           setCurrentAgent(response.agent as AgentName);
+
+          const finalContent = streamBufferRef.current || response.message || "No response generated.";
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantId
                 ? {
                     ...m,
-                    content: m.content || response.message || "No response generated.",
+                    content: finalContent,
                     agent: response.agent,
                     citations: response.citations,
                     tool_results: response.tool_results?.length ? response.tool_results : m.tool_results,
@@ -136,8 +156,11 @@ export function useChat() {
           setIsStreaming(false);
           abortRef.current = null;
         },
-        // onError
+        // onError — stop RAF, show error
         (error: string) => {
+          if (rafRef.current) cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantId
@@ -249,11 +272,13 @@ export function useChat() {
   }, []);
 
   const cancelStream = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
     abortRef.current?.abort();
     abortRef.current = null;
     setIsStreaming(false);
     setMessages((prev) =>
-      prev.map((m) => (m.isStreaming ? { ...m, isStreaming: false } : m)),
+      prev.map((m) => (m.isStreaming ? { ...m, isStreaming: false, content: streamBufferRef.current || m.content } : m)),
     );
   }, []);
 
