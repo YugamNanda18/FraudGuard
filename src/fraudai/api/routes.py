@@ -292,14 +292,16 @@ async def chat_stream(
                         agent_name = langgraph_node
 
                 elif event_type == "on_chain_end":
-                    # Capture non-streamed messages (e.g. responder node)
-                    output = event.get("data", {}).get("output", {})
-                    if isinstance(output, dict):
-                        msgs = output.get("messages", [])
-                        for msg in msgs:
-                            if hasattr(msg, "content") and isinstance(msg, AIMessage) and msg.content:
-                                if msg.content not in accumulated_content:
-                                    accumulated_content += msg.content
+                    # Capture non-streamed messages ONLY if no LLM tokens were received.
+                    # This handles the case where a node returns an AIMessage directly
+                    # (e.g. Donna clarification) without invoking an LLM.
+                    if not accumulated_content:
+                        output = event.get("data", {}).get("output", {})
+                        if isinstance(output, dict):
+                            msgs = output.get("messages", [])
+                            for msg in msgs:
+                                if hasattr(msg, "content") and isinstance(msg, AIMessage) and msg.content:
+                                    accumulated_content = msg.content
                                     payload = {"type": "token", "content": msg.content}
                                     yield f"data: {json.dumps(payload)}\n\n"
 
