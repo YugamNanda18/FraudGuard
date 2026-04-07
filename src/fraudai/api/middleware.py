@@ -47,10 +47,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         # Resolve endpoint from the matched route template to avoid
         # high-cardinality labels (e.g. "/api/v1/sessions/{session_id}").
         route = request.scope.get("route")
-        if route and hasattr(route, "path"):
-            endpoint = route.path
-        else:
-            endpoint = request.url.path
+        endpoint = route.path if route and hasattr(route, "path") else request.url.path
         duration = time.monotonic() - start
 
         status_code = str(response.status_code)

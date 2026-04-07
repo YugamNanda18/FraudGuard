@@ -12,12 +12,13 @@ import logging
 import re
 from typing import TYPE_CHECKING, Any
 
-from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, SystemMessage
 
 from fraudai.core.metrics import AGENT_INVOCATIONS, AGENT_LATENCY, TOKENS_USED
 
 if TYPE_CHECKING:
+    from langchain_core.language_models import BaseChatModel
+
     from fraudai.agents.graph import AgentInvocationResult
     from fraudai.agents.state import AgentState
 
@@ -70,7 +71,7 @@ def _build_llm(
     if provider == "openai":
         from langchain_openai import ChatOpenAI
 
-        return ChatOpenAI(  # type: ignore[call-arg]
+        return ChatOpenAI(  # type: ignore[call-arg,no-any-return]
             model=model,
             openai_api_key=api_key,
             max_tokens=max_tokens,
@@ -153,7 +154,9 @@ class ClaudeAgentInvoker:
                 tool_call_id = ""
                 for tc in getattr(ai_message, "tool_calls", []):
                     tc_id = tc.get("id", "") if isinstance(tc, dict) else getattr(tc, "id", "")
-                    tc_name = tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", "")
+                    tc_name = (
+                        tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", "")
+                    )
                     if tc_name == tr["tool_name"] and tc_id not in used_ids:
                         tool_call_id = tc_id
                         used_ids.add(tc_id)
@@ -165,9 +168,7 @@ class ClaudeAgentInvoker:
                     )
                 )
             # Re-invoke without tools to get final text response
-            ai_message = await self._invoke_with_retry(
-                self._model, messages_with_tools, agent_name
-            )
+            ai_message = await self._invoke_with_retry(self._model, messages_with_tools, agent_name)
 
         duration = _time.monotonic() - start
         AGENT_LATENCY.labels(agent_name=agent_name).observe(duration)
@@ -204,10 +205,10 @@ class ClaudeAgentInvoker:
         messages.extend(state_messages)
         return messages
 
-    def _bind_tools(self, tools: list[Any]) -> BaseChatModel:
+    def _bind_tools(self, tools: list[Any]) -> Any:
         """Return a model copy with tools bound, or the bare model if no tools."""
         if tools:
-            return self._model.bind_tools(tools)  # type: ignore[return-value]
+            return self._model.bind_tools(tools)
         return self._model
 
     async def _invoke_with_retry(

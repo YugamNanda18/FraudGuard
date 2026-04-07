@@ -295,16 +295,18 @@ class BOEIngestionPipeline:
 
             result = await self._store._client.scroll(
                 collection_name=QdrantStore.BOE_COLLECTION,
-                scroll_filter=models.Filter(must=[
-                    models.FieldCondition(
-                        key="boe_id",
-                        match=models.MatchValue(value=doc_id),
-                    ),
-                    models.FieldCondition(
-                        key="version_corpus",
-                        match=models.MatchValue(value=self._corpus_version),
-                    ),
-                ]),
+                scroll_filter=models.Filter(
+                    must=[
+                        models.FieldCondition(
+                            key="boe_id",
+                            match=models.MatchValue(value=doc_id),
+                        ),
+                        models.FieldCondition(
+                            key="version_corpus",
+                            match=models.MatchValue(value=self._corpus_version),
+                        ),
+                    ]
+                ),
                 limit=1,
             )
             points, _ = result

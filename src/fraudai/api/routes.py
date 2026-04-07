@@ -125,8 +125,11 @@ def _extract_response_text(state: dict[str, Any]) -> str:
                 return content
             if isinstance(content, list):
                 text_parts = [
-                    b.get("text", "") if isinstance(b, dict) and b.get("type") == "text"
-                    else b if isinstance(b, str) else ""
+                    b.get("text", "")
+                    if isinstance(b, dict) and b.get("type") == "text"
+                    else b
+                    if isinstance(b, str)
+                    else ""
                     for b in content
                 ]
                 joined = "\n".join(p for p in text_parts if p)
@@ -344,7 +347,11 @@ async def chat_stream(
                     # Detect which agent's model is running
                     meta = event.get("metadata", {})
                     langgraph_node = meta.get("langgraph_node", "")
-                    if langgraph_node and langgraph_node not in ("donna", "responder", "human_confirmation"):
+                    if langgraph_node and langgraph_node not in (
+                        "donna",
+                        "responder",
+                        "human_confirmation",
+                    ):
                         agent_name = langgraph_node
 
                 elif event_type == "on_chain_end":
@@ -352,12 +359,16 @@ async def chat_stream(
                     # This handles the case where a node returns an AIMessage directly
                     # (e.g. Donna clarification) without invoking an LLM.
                     if not accumulated_content:
-                        output = event.get("data", {}).get("output", {})
+                        output: Any = event.get("data", {}).get("output", {})
                         if isinstance(output, dict):
                             msgs = output.get("messages", [])
                             for msg in msgs:
-                                if hasattr(msg, "content") and isinstance(msg, AIMessage) and msg.content:
-                                    accumulated_content = msg.content
+                                if (
+                                    hasattr(msg, "content")
+                                    and isinstance(msg, AIMessage)
+                                    and msg.content
+                                ):
+                                    accumulated_content = str(msg.content)
                                     payload = {"type": "token", "content": msg.content}
                                     yield f"data: {json.dumps(payload)}\n\n"
 
@@ -499,6 +510,7 @@ async def upload_file(
                     sparse_data = emb.get("sparse")
                     if sparse_data and sparse_data.get("indices"):
                         from qdrant_client import models as _qmodels
+
                         chunk["sparse_vector"] = _qmodels.SparseVector(
                             indices=sparse_data["indices"],
                             values=sparse_data["values"],

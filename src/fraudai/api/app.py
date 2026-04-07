@@ -25,7 +25,6 @@ from fraudai.api.middleware import MetricsMiddleware
 from fraudai.api.routes import router as api_router
 from fraudai.api.session_manager import SessionManager
 from fraudai.core.config import settings
-from fraudai.core.tracing import setup_tracing
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +64,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     from fraudai.tools.sandbox import SandboxEngine
 
     try:
-        embedder = EmbeddingGenerator(device="cpu")  # CPU for API queries; GPU reserved for ingestion
+        embedder = EmbeddingGenerator(
+            device="cpu"
+        )  # CPU for API queries; GPU reserved for ingestion
         retriever = LegalRetriever(store=store, embedder=embedder)
 
         # Attempt to initialise the sandbox for real tool implementations.
@@ -96,12 +97,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         )
     except Exception:
         logger.exception("ToolRegistry initialization failed — tools will use stubs")
-        tool_registry = None  # type: ignore[assignment]
-        retriever = None  # type: ignore[assignment]
+        tool_registry = None
+        retriever = None
 
     # Inject ToolRegistry into graph BEFORE compilation
     if tool_registry is not None:
         from fraudai.agents.graph import set_tool_registry
+
         set_tool_registry(tool_registry)
 
     # LangGraph compiled graph
@@ -127,6 +129,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     # Feedback store (in-memory MVP -- list of deque for bounded memory, Bug #14)
     from collections import deque
+
     feedback_store: deque[dict[str, Any]] = deque(maxlen=10_000)
 
     # Publish system info to Prometheus
@@ -183,7 +186,8 @@ def create_app() -> FastAPI:
     # --- CORS ---
     # Permissive in development; lock down in production via env config.
     allow_origins = (
-        ["*"] if settings.environment == "development"
+        ["*"]
+        if settings.environment == "development"
         else [o.strip() for o in settings.cors_allowed_origins.split(",") if o.strip()]
     )
     app.add_middleware(

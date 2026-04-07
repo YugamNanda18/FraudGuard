@@ -132,8 +132,9 @@ class TestLouis:
         data = _chat("Que dice la normativa sobre blanqueo?")
         assert data["agent"] == "louis"
         msg = data["message"].lower()
-        assert any(w in msg for w in ["art.", "artículo", "articulo", "ley"]), \
+        assert any(w in msg for w in ["art.", "artículo", "articulo", "ley"]), (
             "Louis should cite legal articles"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -196,16 +197,14 @@ class TestConversationalContinuity:
         sid = r1["session_id"]
 
         r2 = _chat("Y en el ambito financiero?", session_id=sid)
-        assert r2["agent"] == "louis", \
-            f"Follow-up should stay with louis, got {r2['agent']}"
+        assert r2["agent"] == "louis", f"Follow-up should stay with louis, got {r2['agent']}"
 
     def test_topic_change_reroutes(self) -> None:
         r1 = _chat("Que dice la ley sobre blanqueo?")
         sid = r1["session_id"]
 
         r2 = _chat("Necesito analizar transacciones sospechosas de fraude", session_id=sid)
-        assert r2["agent"] == "harvey", \
-            f"Topic change should reroute to harvey, got {r2['agent']}"
+        assert r2["agent"] == "harvey", f"Topic change should reroute to harvey, got {r2['agent']}"
 
 
 # ---------------------------------------------------------------------------

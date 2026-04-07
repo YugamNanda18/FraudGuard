@@ -53,10 +53,7 @@ class CorrelationFilter(logging.Filter):
 # Setup
 # ---------------------------------------------------------------------------
 
-_TRACING_FORMAT = (
-    "%(asctime)s [%(levelname)s] [cid=%(correlation_id)s] "
-    "%(name)s: %(message)s"
-)
+_TRACING_FORMAT = "%(asctime)s [%(levelname)s] [cid=%(correlation_id)s] %(name)s: %(message)s"
 
 
 def setup_tracing(level: int = logging.INFO) -> None:

@@ -184,7 +184,9 @@ async def donna_router_node(state: AgentState) -> dict[str, Any]:
     """
     # Bug #1 fix: respect agent_override from ChatRequest
     if state.get("current_agent") is not None:
-        logger.info("Donna: agent_override active, skipping classification -> %s", state["current_agent"])
+        logger.info(
+            "Donna: agent_override active, skipping classification -> %s", state["current_agent"]
+        )
         return {"turn_count": state.get("turn_count", 0) + 1}
 
     last_message = state["messages"][-1]

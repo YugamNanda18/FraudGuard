@@ -207,16 +207,12 @@ class TestTracing:
         from fraudai.core.tracing import CorrelationFilter, setup_tracing
 
         root = logging.getLogger()
-        initial_filter_count = sum(
-            1 for f in root.filters if isinstance(f, CorrelationFilter)
-        )
+        initial_filter_count = sum(1 for f in root.filters if isinstance(f, CorrelationFilter))
 
         setup_tracing()
         setup_tracing()  # second call should be a no-op
 
-        final_filter_count = sum(
-            1 for f in root.filters if isinstance(f, CorrelationFilter)
-        )
+        final_filter_count = sum(1 for f in root.filters if isinstance(f, CorrelationFilter))
         # Should have at most 1 more than initial (from the first setup_tracing)
         assert final_filter_count <= initial_filter_count + 1
 

@@ -148,7 +148,8 @@ def classify_by_keywords(message: str) -> IntentClassification:
 
     # Boost Mike for adversarial/security context (often overlaps with Harvey)
     if "mike" in scores and any(
-        w in message.lower() for w in ("adversar", "red team", "prompt injection", "pentest", "vulnerab", "exploit")
+        w in message.lower()
+        for w in ("adversar", "red team", "prompt injection", "pentest", "vulnerab", "exploit")
     ):
         scores["mike"] = scores.get("mike", 0) + 3
 

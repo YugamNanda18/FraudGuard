@@ -165,6 +165,7 @@ async def client() -> AsyncClient:
 
     Auth is overridden to return a fixed test user.
     """
+
     # -- Patch intent classifier and agent invoker on graph module --
     async def _classify(message: str) -> dict[str, Any]:
         return _keyword_classifier(message)

@@ -355,9 +355,7 @@ class TestGroqRouting:
         return httpx.Response(
             status_code=200,
             json=body,
-            request=httpx.Request(
-                "POST", "https://api.groq.com/openai/v1/chat/completions"
-            ),
+            request=httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions"),
         )
 
     async def test_groq_routes_ambiguous_message(self) -> None:
@@ -399,17 +397,13 @@ class TestGroqRouting:
         groq_response_error = httpx.Response(
             status_code=500,
             json={"error": "Internal server error"},
-            request=httpx.Request(
-                "POST", "https://api.groq.com/openai/v1/chat/completions"
-            ),
+            request=httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions"),
         )
 
         ollama_body = {
             "message": {
                 "role": "assistant",
-                "content": json.dumps(
-                    {"agent": "louis", "language": "en", "confidence": 0.88}
-                ),
+                "content": json.dumps({"agent": "louis", "language": "en", "confidence": 0.88}),
             },
             "done": True,
         }
@@ -447,9 +441,7 @@ class TestGroqRouting:
         ollama_body = {
             "message": {
                 "role": "assistant",
-                "content": json.dumps(
-                    {"agent": "mike", "language": "en", "confidence": 0.85}
-                ),
+                "content": json.dumps({"agent": "mike", "language": "en", "confidence": 0.85}),
             },
             "done": True,
         }

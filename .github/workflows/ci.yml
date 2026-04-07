@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: uv pip install -e ".[dev]"
-      - run: uv run mypy src/fraudai/ --strict --ignore-missing-imports
+      - run: uv run mypy src/fraudai/ --strict --ignore-missing-imports --no-warn-unused-ignores
 
   test:
     runs-on: ubuntu-latest
