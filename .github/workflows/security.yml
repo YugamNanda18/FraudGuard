@@ -12,8 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - run: uv sync --dev
-      - run: uv run pip install pip-audit
+        with:
+          python-version: "3.11"
+      - run: uv venv && uv pip install -e ".[dev]"
+      - run: uv pip install pip-audit
       - run: uv run pip-audit
 
   secrets-scan:
