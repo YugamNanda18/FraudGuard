@@ -223,13 +223,15 @@ async def chat(
     elif session_mgr.get_session(session_id) is None:
         session_mgr.ensure_session(session_id, user.tenant_id, user.tier)
 
-    # Build input state
+    # Build input state — reset current_agent so Donna re-classifies each turn
     input_state: dict[str, Any] = {
         "messages": [HumanMessage(content=request_body.message)],
         "session_id": session_id,
         "tenant_id": user.tenant_id,
         "user_tier": user.tier,
         "language": request_body.language,
+        "current_agent": None,  # Force Donna to re-classify on every message
+        "escalation_request": None,  # Clear any previous escalation
     }
 
     # Agent override: bypass Donna routing
@@ -305,6 +307,8 @@ async def chat_stream(
         "tenant_id": user.tenant_id,
         "user_tier": user.tier,
         "language": request_body.language,
+        "current_agent": None,
+        "escalation_request": None,
     }
 
     if request_body.agent_override is not None:
