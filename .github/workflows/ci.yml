@@ -18,7 +18,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.11"
-      - run: uv venv && uv pip install -e ".[dev]"
+      - run: uv pip install -e ".[dev]"
       - run: uv run ruff check src/ tests/
       - run: uv run ruff format --check src/ tests/
 
@@ -29,7 +29,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.11"
-      - run: uv venv && uv pip install -e ".[dev]"
+      - run: uv pip install -e ".[dev]"
       - run: uv run mypy src/fraudai/ --strict --ignore-missing-imports
 
   test:
@@ -39,7 +39,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.11"
-      - run: uv venv && uv pip install -e ".[dev]"
+      - run: uv pip install -e ".[dev]"
       - run: uv run python -m pytest tests/ -q --ignore=tests/test_smoke_live.py --cov=fraudai --cov-report=xml --cov-fail-under=80
       - uses: codecov/codecov-action@v5
         if: always()
