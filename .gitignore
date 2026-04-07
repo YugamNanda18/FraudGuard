@@ -84,3 +84,4 @@ uv.lock
 frontend/.next/
 frontend/node_modules/
 frontend/.pnpm-store/
+frontend/node_modules/
