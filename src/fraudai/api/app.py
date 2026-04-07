@@ -65,7 +65,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     from fraudai.tools.sandbox import SandboxEngine
 
     try:
-        embedder = EmbeddingGenerator(device="cpu")
+        embedder = EmbeddingGenerator()  # Auto-detect: CUDA if available, else CPU
         retriever = LegalRetriever(store=store, embedder=embedder)
 
         # Attempt to initialise the sandbox for real tool implementations.
