@@ -331,6 +331,191 @@ class TestKeywordFallback:
 # ---------------------------------------------------------------------------
 
 
+FAKE_GROQ_KEY = "gsk_" + "x" * 48  # noqa: S105 -- fake test key
+
+
+class TestGroqRouting:
+    """Tests for Groq API-based intent classification."""
+
+    def _make_groq_response(self, agent: str, language: str, confidence: float) -> httpx.Response:
+        """Build a mock httpx.Response mimicking Groq chat completions."""
+        body = {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": json.dumps(
+                            {"agent": agent, "language": language, "confidence": confidence}
+                        ),
+                    },
+                    "finish_reason": "stop",
+                }
+            ],
+        }
+        return httpx.Response(
+            status_code=200,
+            json=body,
+            request=httpx.Request(
+                "POST", "https://api.groq.com/openai/v1/chat/completions"
+            ),
+        )
+
+    async def test_groq_routes_ambiguous_message(self) -> None:
+        """When keywords don't match, Groq should classify the message."""
+        router = DonnaRouter(groq_api_key=FAKE_GROQ_KEY)
+        mock_response = self._make_groq_response("harvey", "en", 0.92)
+
+        with patch("fraudai.agents.donna.httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+
+            # "help me please" has no keyword matches, so Groq is tried
+            result = await router.classify("help me please with this case")
+
+        assert result["agent"] == "harvey"
+        assert result["confidence"] == 0.92
+
+    async def test_groq_not_called_when_keywords_match(self) -> None:
+        """Keywords should short-circuit before Groq is tried."""
+        router = DonnaRouter(groq_api_key=FAKE_GROQ_KEY)
+
+        with patch("fraudai.agents.donna.httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client_cls.return_value = mock_client
+
+            result = await router.classify("Detect fraud in suspicious transactions")
+
+        # Keywords matched -> Groq never called
+        mock_client.post.assert_not_called()
+        assert result["agent"] == "harvey"
+
+    async def test_groq_failure_falls_through_to_ollama(self) -> None:
+        """If Groq fails, Ollama should be tried as fallback."""
+        router = DonnaRouter(groq_api_key=FAKE_GROQ_KEY)
+
+        groq_response_error = httpx.Response(
+            status_code=500,
+            json={"error": "Internal server error"},
+            request=httpx.Request(
+                "POST", "https://api.groq.com/openai/v1/chat/completions"
+            ),
+        )
+
+        ollama_body = {
+            "message": {
+                "role": "assistant",
+                "content": json.dumps(
+                    {"agent": "louis", "language": "en", "confidence": 0.88}
+                ),
+            },
+            "done": True,
+        }
+        ollama_response = httpx.Response(
+            status_code=200,
+            json=ollama_body,
+            request=httpx.Request("POST", "http://localhost:11434/api/chat"),
+        )
+
+        call_count = 0
+
+        async def mock_post(url: str, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if "groq.com" in url:
+                groq_response_error.raise_for_status()  # raises HTTPStatusError
+            return ollama_response
+
+        with patch("fraudai.agents.donna.httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.post = AsyncMock(side_effect=mock_post)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+
+            # Ambiguous message -> Groq fails -> Ollama succeeds
+            result = await router.classify("I need help with something")
+
+        assert result["agent"] == "louis"
+        assert call_count == 2  # Groq + Ollama
+
+    async def test_groq_not_used_without_api_key(self) -> None:
+        """Without a Groq API key, Groq is skipped entirely."""
+        router = DonnaRouter(groq_api_key=None)
+        ollama_body = {
+            "message": {
+                "role": "assistant",
+                "content": json.dumps(
+                    {"agent": "mike", "language": "en", "confidence": 0.85}
+                ),
+            },
+            "done": True,
+        }
+        ollama_response = httpx.Response(
+            status_code=200,
+            json=ollama_body,
+            request=httpx.Request("POST", "http://localhost:11434/api/chat"),
+        )
+
+        with patch("fraudai.agents.donna.httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.post = AsyncMock(return_value=ollama_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+
+            result = await router.classify("something ambiguous")
+
+        assert result["agent"] == "mike"
+
+    async def test_groq_custom_model(self) -> None:
+        """Custom Groq model should be used in the request."""
+        router = DonnaRouter(
+            groq_api_key=FAKE_GROQ_KEY,
+            groq_model="llama-3.1-8b-instant",
+        )
+        mock_response = self._make_groq_response("rachel", "es", 0.90)
+
+        with patch("fraudai.agents.donna.httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+
+            result = await router.classify("something ambiguous with datos")
+
+        assert result["agent"] == "rachel"
+        # Verify the model was sent in the request
+        call_args = mock_client.post.call_args
+        payload = call_args.kwargs.get("json") or call_args[1].get("json")
+        assert payload["model"] == "llama-3.1-8b-instant"
+
+    async def test_groq_low_confidence_returns_none(self) -> None:
+        """Groq response with low confidence should still trigger clarification."""
+        router = DonnaRouter(groq_api_key=FAKE_GROQ_KEY)
+        mock_response = self._make_groq_response("harvey", "en", 0.4)
+
+        with patch("fraudai.agents.donna.httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+
+            result = await router.classify("hmmm")
+
+        assert result["agent"] is None
+        assert result["confidence"] == 0.4
+
+
+# ---------------------------------------------------------------------------
+# Graph integration: classify_intent_local uses DonnaRouter
+# ---------------------------------------------------------------------------
+
+
 class TestGraphIntegration:
     """Verify classify_intent_local in graph.py delegates to DonnaRouter."""
 

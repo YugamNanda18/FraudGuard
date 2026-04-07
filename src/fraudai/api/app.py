@@ -108,8 +108,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     graph = build_fraud_ai_graph()
     logger.info("LangGraph orchestration graph compiled")
 
-    # Session manager (in-memory MVP)
-    session_manager = SessionManager()
+    # Database (SQLite persistence -- graceful degradation to in-memory if unavailable)
+    from fraudai.core.database import Database
+
+    db: Database | None = None
+    try:
+        db = Database()
+        await db.initialize()
+        logger.info("SQLite database initialized for session/feedback persistence")
+    except Exception:
+        logger.exception("Database initialization failed -- falling back to in-memory only")
+        db = None
+
+    # Session manager (in-memory cache + optional DB persistence)
+    session_manager = SessionManager(db=db)
+    if db is not None:
+        await session_manager.load_from_db()
 
     # Feedback store (in-memory MVP -- list of deque for bounded memory, Bug #14)
     from collections import deque
@@ -133,10 +147,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.state.tool_registry = tool_registry
     app.state.retriever = retriever
     app.state.embedder = embedder if retriever is not None else None
+    app.state.db = db
 
     yield
 
     # --- Shutdown ---
+    if db is not None:
+        await db.close()
     logger.info("Shutting down FraudAI Agent API")
 
 

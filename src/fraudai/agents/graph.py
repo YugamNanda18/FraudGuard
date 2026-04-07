@@ -68,6 +68,7 @@ async def _get_donna_router() -> DonnaRouter:
             _donna_router = DonnaRouter(
                 ollama_host=settings.ollama_host,
                 model=settings.ollama_model,
+                groq_api_key=settings.groq_api_key or None,
             )
     return _donna_router
 

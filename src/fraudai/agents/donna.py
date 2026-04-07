@@ -171,15 +171,25 @@ def classify_by_keywords(message: str) -> IntentClassification:
 
 
 class DonnaRouter:
-    """Intent classifier using local Ollama model for routing."""
+    """Intent classifier using local Ollama model for routing.
+
+    Classification strategy (ordered by priority):
+    1. Keyword-based (instant, ~0ms) -- used when keywords match clearly.
+    2. Groq API (fast, ~200ms) -- used for ambiguous messages when key is set.
+    3. Ollama local (slower, ~2-10s) -- fallback when Groq is unavailable.
+    """
 
     def __init__(
         self,
         ollama_host: str = "http://localhost:11434",
         model: str = "llama3.1:8b-instruct-q4_K_M",
+        groq_api_key: str | None = None,
+        groq_model: str | None = None,
     ) -> None:
         self._ollama_host = ollama_host.rstrip("/")
         self._model = model
+        self._groq_api_key = groq_api_key or None
+        self._groq_model = groq_model or "llama-3.3-70b-versatile"
         self._timeout = 10.0
 
     async def classify(self, message: str) -> IntentClassification:
@@ -208,7 +218,19 @@ class DonnaRouter:
             result = keyword_result
             return result
 
-        # Step 3: Keywords didn't match — try Ollama for ambiguous messages
+        # Step 3: Keywords didn't match — try Groq API for fast LLM classification
+        if self._groq_api_key:
+            try:
+                result = await self._call_groq(message)
+                return result
+            except Exception as exc:
+                logger.warning(
+                    "Groq classification failed (%s: %s), trying Ollama",
+                    type(exc).__name__,
+                    exc,
+                )
+
+        # Step 4: Ollama fallback for ambiguous messages
         try:
             result = await self._call_ollama(message)
             return result
@@ -270,6 +292,41 @@ class DonnaRouter:
         content = data["message"]["content"]
         parsed = json.loads(content)
 
+        return self._validate_classification(parsed)
+
+    async def _call_groq(self, message: str) -> IntentClassification:
+        """Send classification request to Groq API and parse response.
+
+        Uses the OpenAI-compatible chat completions endpoint with JSON mode.
+        Timeout is tight (5s) since Groq is designed for low-latency inference.
+        """
+        payload: dict[str, Any] = {
+            "model": self._groq_model,
+            "messages": [
+                {"role": "system", "content": _CLASSIFY_SYSTEM_PROMPT},
+                {"role": "user", "content": message},
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.1,
+            "max_tokens": 100,
+        }
+
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                json=payload,
+                headers={
+                    "Authorization": f"Bearer {self._groq_api_key}",
+                    "Content-Type": "application/json",
+                },
+            )
+            response.raise_for_status()
+
+        data = response.json()
+        content = data["choices"][0]["message"]["content"]
+        parsed = json.loads(content)
+
+        logger.info("Groq classification succeeded (model=%s)", self._groq_model)
         return self._validate_classification(parsed)
 
     def _validate_classification(self, raw: dict[str, Any]) -> IntentClassification:
