@@ -1,11 +1,11 @@
 [project]
-name = "fraudai-agent"
+name = "fraudguard"
 version = "0.1.0"
-description = "AI agentic platform for banking fraud detection and AI red teaming in FinTech"
+description = "Autonomous Multi-Agent Platform for Banking Fraud Detection, AML/KYC Compliance & AI Red Teaming in FinTech"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [
-    { name = "Adrian Infantes" },
+    { name = "Yugam Nanda" },
 ]
 dependencies = [
     "langchain>=0.3",
