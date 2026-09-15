@@ -23,7 +23,7 @@ class Settings(BaseSettings):
 
     # LLM Provider
     llm_provider: str = "groq"  # "anthropic" | "groq" | "openai"
-    llm_model: str = "llama-3.3-70b-versatile"  # default Groq model
+    llm_model: str = "groq/compound"  # default Groq model
     anthropic_api_key: str = ""
     groq_api_key: str = ""
 
@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     cors_allowed_origins: str = "http://localhost:3000"
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
 settings = Settings()

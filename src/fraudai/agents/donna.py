@@ -17,6 +17,9 @@ import httpx
 from fraudai.core.metrics import AGENT_LATENCY, ROUTING_ACCURACY
 
 
+from fraudai.core.config import settings
+
+
 class IntentClassification(TypedDict):
     """Return contract for intent classification.
 
@@ -27,6 +30,7 @@ class IntentClassification(TypedDict):
     agent: str  # "harvey" | "louis" | "jessica" | "mike" | "rachel" | None
     language: str  # "es" | "en"
     confidence: float  # 0.0 - 1.0
+
 
 
 logger = logging.getLogger(__name__)
@@ -190,7 +194,7 @@ class DonnaRouter:
         self._ollama_host = ollama_host.rstrip("/")
         self._model = model
         self._groq_api_key = groq_api_key or None
-        self._groq_model = groq_model or "llama-3.3-70b-versatile"
+        self._groq_model = groq_model or settings.llm_model
         self._timeout = 10.0
 
     async def classify(self, message: str) -> IntentClassification:

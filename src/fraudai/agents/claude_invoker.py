@@ -208,7 +208,11 @@ class ClaudeAgentInvoker:
     def _bind_tools(self, tools: list[Any]) -> Any:
         """Return a model copy with tools bound, or the bare model if no tools."""
         if tools:
-            return self._model.bind_tools(tools)
+            try:
+                return self._model.bind_tools(tools)
+            except Exception as exc:
+                logger.warning("bind_tools failed (%s) — using bare model", exc)
+                return self._model
         return self._model
 
     async def _invoke_with_retry(
@@ -231,6 +235,12 @@ class ClaudeAgentInvoker:
                 return response  # type: ignore[no-any-return]
             except Exception as exc:
                 last_error = exc
+                if "tool calling" in str(exc).lower() or "not supported" in str(exc).lower():
+                    logger.warning(
+                        "Agent '%s' model does not support tool calling — falling back to bare model",
+                        agent_name,
+                    )
+                    model = self._model
                 if attempt < _MAX_RETRIES:
                     delay = _RETRY_BASE_DELAY * (2 ** (attempt - 1))
                     logger.warning(

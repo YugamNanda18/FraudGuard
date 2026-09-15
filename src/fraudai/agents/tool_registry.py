@@ -112,16 +112,19 @@ def _wrap_impl_as_tool(
         getattr(stub_tool, "description", None) or getattr(stub_tool, "__doc__", "") or ""
     )
 
-    @langchain_tool(tool_name, description=tool_description)  # type: ignore[operator,arg-type]
-    @functools.wraps(impl_method)
-    async def _wrapped(**kwargs: Any) -> Any:
+    from langchain_core.tools import StructuredTool
+
+    args_schema = getattr(stub_tool, "args_schema", None)
+
+    async def _async_run(**kwargs: Any) -> Any:
         return await impl_method(**kwargs)
 
-    # Preserve the args_schema from the stub if available
-    if hasattr(stub_tool, "args_schema") and stub_tool.args_schema is not None:
-        _wrapped.args_schema = stub_tool.args_schema
-
-    return _wrapped  # type: ignore[no-any-return]
+    return StructuredTool.from_function(
+        coroutine=_async_run,
+        name=tool_name,
+        description=tool_description,
+        args_schema=args_schema,
+    )
 
 
 class ToolRegistry:

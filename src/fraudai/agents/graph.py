@@ -209,7 +209,7 @@ async def donna_router_node(state: AgentState) -> dict[str, Any]:
     return {
         "current_agent": agent,
         "previous_agent": state.get("current_agent"),
-        "language": classification.get("language", "es"),
+        "language": classification.get("language", "en"),
         "turn_count": state.get("turn_count", 0) + 1,
     }
 

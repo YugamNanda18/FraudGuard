@@ -90,22 +90,26 @@ class EmbeddingGenerator:
         self._batch_size = batch_size
         self._model_name = model_name
 
-        # Try FlagEmbedding first (native multi-vector support)
         self._flag_model: Any | None = None
-        self._st_model: SentenceTransformer | None = None
+        self._st_model: Any | None = None
         self._sparse_encoder: _TFIDFSparseEncoder | None = None
+        self._loaded = False
 
+    def _ensure_loaded(self) -> None:
+        if self._loaded:
+            return
+        self._loaded = True
         try:
             from FlagEmbedding import BGEM3FlagModel
 
             logger.info(
                 "Loading FlagEmbedding model '%s' on device '%s'",
-                model_name,
-                device,
+                self._model_name,
+                self._device,
             )
             self._flag_model = BGEM3FlagModel(
-                model_name,
-                use_fp16=(device == "cuda"),
+                self._model_name,
+                use_fp16=(self._device == "cuda"),
             )
             logger.info("FlagEmbedding model loaded — native dense+sparse available")
         except (ImportError, Exception) as exc:
@@ -114,15 +118,18 @@ class EmbeddingGenerator:
                 "sentence-transformers + TF-IDF sparse",
                 exc,
             )
-            from sentence_transformers import SentenceTransformer
+            try:
+                from sentence_transformers import SentenceTransformer
 
-            self._st_model = SentenceTransformer(model_name, device=device)
-            self._sparse_encoder = _TFIDFSparseEncoder()
-            logger.info(
-                "SentenceTransformer model '%s' loaded on '%s'",
-                model_name,
-                device,
-            )
+                self._st_model = SentenceTransformer(self._model_name, device=self._device)
+                self._sparse_encoder = _TFIDFSparseEncoder()
+                logger.info(
+                    "SentenceTransformer model '%s' loaded on '%s'",
+                    self._model_name,
+                    self._device,
+                )
+            except Exception as e:
+                logger.warning("Embedding model load failed (%s) — using fallback zero-dense embeddings", e)
 
     # ------------------------------------------------------------------
     # Dense
@@ -136,6 +143,8 @@ class EmbeddingGenerator:
         if not texts:
             return []
 
+        self._ensure_loaded()
+
         if self._flag_model is not None:
             output = self._flag_model.encode(
                 texts,
@@ -147,15 +156,18 @@ class EmbeddingGenerator:
             result: list[list[float]] = dense.tolist()
             return result
 
-        assert self._st_model is not None
-        embeddings = self._st_model.encode(
-            texts,
-            batch_size=self._batch_size,
-            show_progress_bar=False,
-            normalize_embeddings=True,
-        )
-        st_result: list[list[float]] = embeddings.tolist()
-        return st_result
+        if self._st_model is not None:
+            embeddings = self._st_model.encode(
+                texts,
+                batch_size=self._batch_size,
+                show_progress_bar=False,
+                normalize_embeddings=True,
+            )
+            st_result: list[list[float]] = embeddings.tolist()
+            return st_result
+
+        # Fallback if sentence-transformers model failed to load
+        return [[0.0] * self.DENSE_DIM for _ in texts]
 
     # ------------------------------------------------------------------
     # Sparse
@@ -168,6 +180,8 @@ class EmbeddingGenerator:
         """
         if not texts:
             return []
+
+        self._ensure_loaded()
 
         if self._flag_model is not None:
             output = self._flag_model.encode(

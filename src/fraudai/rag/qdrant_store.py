@@ -34,7 +34,12 @@ class QdrantStore:
     ]
 
     def __init__(self, host: str = "localhost", port: int = 6333) -> None:
-        self._client = AsyncQdrantClient(host=host, port=port)
+        self._host = host
+        self._port = port
+        if host == ":memory:":
+            self._client = AsyncQdrantClient(location=":memory:")
+        else:
+            self._client = AsyncQdrantClient(host=host, port=port)
         logger.info("QdrantStore initialized (host=%s, port=%d)", host, port)
 
     # ------------------------------------------------------------------
@@ -43,12 +48,22 @@ class QdrantStore:
 
     async def initialize(self) -> None:
         """Create static collections if they do not already exist."""
-        await self.create_boe_collection()
-        await self._create_legislation_collection(
-            self.EU_COLLECTION,
-            with_sparse=True,
-        )
-        logger.info("Qdrant collections initialized")
+        try:
+            await self.create_boe_collection()
+            await self._create_legislation_collection(
+                self.EU_COLLECTION,
+                with_sparse=True,
+            )
+            logger.info("Qdrant collections initialized")
+        except Exception as e:
+            logger.warning("Failed to connect to Qdrant server at %s:%s (%s) -- initializing in-memory vector store", self._host, self._port, e)
+            self._client = AsyncQdrantClient(location=":memory:")
+            await self.create_boe_collection()
+            await self._create_legislation_collection(
+                self.EU_COLLECTION,
+                with_sparse=True,
+            )
+            logger.info("In-memory Qdrant collections initialized successfully")
 
     async def create_boe_collection(self) -> None:
         """Create the BOE legislation collection.

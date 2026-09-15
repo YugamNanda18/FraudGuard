@@ -72,6 +72,7 @@ def _make_flag_generator() -> tuple[EmbeddingGenerator, MagicMock]:
     gen._flag_model = mock_model
     gen._st_model = None
     gen._sparse_encoder = None
+    gen._loaded = True
     gen._device = "cpu"
     gen._batch_size = 32
     gen._model_name = "BAAI/bge-m3"
@@ -85,6 +86,7 @@ def _make_st_generator() -> tuple[EmbeddingGenerator, MagicMock]:
     gen._flag_model = None
     gen._st_model = mock_st
     gen._sparse_encoder = _TFIDFSparseEncoder()
+    gen._loaded = True
     gen._device = "cpu"
     gen._batch_size = 32
     gen._model_name = "BAAI/bge-m3"

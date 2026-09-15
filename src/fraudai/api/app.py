@@ -201,7 +201,14 @@ def create_app() -> FastAPI:
     # --- Prometheus metrics + correlation ID middleware ---
     app.add_middleware(MetricsMiddleware)
 
+    from fastapi.responses import RedirectResponse
+
+    @app.get("/", include_in_schema=False)
+    async def root_redirect():
+        return RedirectResponse(url="/docs")
+
     # --- Routes ---
     app.include_router(api_router, prefix="/api/v1")
 
     return app
+

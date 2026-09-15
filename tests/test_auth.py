@@ -31,15 +31,17 @@ from fraudai.api.auth import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+from fraudai.core.config import settings
+
 # Dev-only signing key — matches the default in Settings.
-_DEV_SIGNING_KEY = "fraudai-dev-" + "secret-change-in-production"
+_DEV_SIGNING_KEY = settings.jwt_secret
 
 
 def _mock_settings(**overrides: Any) -> MagicMock:
     """Build a mock settings object for auth tests."""
     defaults: dict[str, Any] = {
         "environment": "development",
-        "jwt_secret": _DEV_SIGNING_KEY,
+        "jwt_secret": settings.jwt_secret,
         "ollama_host": "http://localhost:11434",
         "llm_provider": "groq",
         "anthropic_api_key": "",

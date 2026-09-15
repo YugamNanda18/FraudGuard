@@ -845,13 +845,14 @@ async def health(request: Request) -> HealthResponse:
         logger.warning("Failed to retrieve corpus version")
 
     # Determine overall status
-    checks = [qdrant_ok, ollama_ok, llm_ok]
-    if all(checks):
+    critical_llm = llm_ok if settings.llm_provider != "ollama" else ollama_ok
+    if qdrant_ok and critical_llm:
         overall = "healthy"
-    elif any(checks):
+    elif qdrant_ok or critical_llm or ollama_ok:
         overall = "degraded"
     else:
         overall = "unhealthy"
+
 
     return HealthResponse(
         status=overall,
