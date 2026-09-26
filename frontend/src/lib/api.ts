@@ -84,6 +84,9 @@ async function request<T>(
   });
 
   if (!res.ok) {
+    if (res.status === 401 && typeof window !== "undefined") {
+      localStorage.removeItem("fraudai_jwt_token");
+    }
     const body = await res.text().catch(() => "Unknown error");
     throw new ApiError(res.status, body);
   }
