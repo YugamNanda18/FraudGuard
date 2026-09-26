@@ -1,7 +1,9 @@
 import type { ChatRequest, ChatResponse, ToolResult, SSEEvent } from "./types";
+import { getAuthToken } from "./api";
 
-const API_BASE =
+const rawApiBase =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_BASE = rawApiBase.replace(/\/$/, "");
 
 // ---------------------------------------------------------------------------
 // SSE line parser
@@ -46,15 +48,17 @@ export function streamChat(
 
   const run = async () => {
     try {
+      const token = getAuthToken();
       const res = await fetch(`${API_BASE}/chat/stream`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer dev-token",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(chatRequest),
         signal: controller.signal,
       });
+
 
       if (!res.ok) {
         const text = await res.text().catch(() => "Stream request failed");

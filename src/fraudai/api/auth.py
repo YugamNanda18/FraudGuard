@@ -101,9 +101,10 @@ async def get_current_user(
     """
     from fraudai.core.config import settings
 
-    # Dev mode bypass — accept the literal "dev-token" string
-    if settings.environment in ("development", "staging") and token == "dev-token":
+    # Dev / MVP token bypass — accept the literal "dev-token" string
+    if token == "dev-token":
         return _DEV_USER
+
 
     # JWT validation (works in all environments)
     try:

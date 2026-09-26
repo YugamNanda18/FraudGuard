@@ -7,9 +7,10 @@ import { MessageBubble } from "./MessageBubble";
 interface MessageListProps {
   messages: Message[];
   onRate?: (messageId: string, rating: number) => void;
+  onSendSuggestion?: (text: string) => void;
 }
 
-export function MessageList({ messages, onRate }: MessageListProps) {
+export function MessageList({ messages, onRate, onSendSuggestion }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom on new messages
@@ -31,15 +32,16 @@ export function MessageList({ messages, onRate }: MessageListProps) {
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             {[
-              "What are the AML obligations under Spanish law?",
-              "Analyze suspicious transaction patterns",
-              "Draft a SAR report for this case",
-              "Check BOE regulations on PBC",
+              "Harvey, analyze transaction TX-999 for suspicious velocity",
+              "Louis, what are the AML obligations under financial regulations?",
+              "Jessica, detect fraud ring networks and shared device clusters",
+              "Rachel, extract feature embeddings and index new vector data",
             ].map((suggestion) => (
               <button
                 key={suggestion}
                 type="button"
-                className="rounded-lg border border-zinc-700/50 bg-zinc-800/50 px-3 py-2 text-xs text-zinc-400 hover:bg-zinc-700/50 hover:text-zinc-300 transition-colors"
+                onClick={() => onSendSuggestion?.(suggestion)}
+                className="rounded-lg border border-zinc-700/50 bg-zinc-800/50 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-700/80 hover:text-white transition-colors"
                 aria-label={`Send: ${suggestion}`}
               >
                 {suggestion}
@@ -50,6 +52,7 @@ export function MessageList({ messages, onRate }: MessageListProps) {
       </div>
     );
   }
+
 
   return (
     <div

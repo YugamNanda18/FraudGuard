@@ -11,8 +11,51 @@ import type {
 // Base configuration
 // ---------------------------------------------------------------------------
 
-const API_BASE =
+const rawApiBase =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_BASE = rawApiBase.replace(/\/$/, "");
+
+export function getApiDocsUrl(): string {
+  const root = API_BASE.replace(/\/api\/v1$/, "").replace(/\/$/, "");
+  return `${root}/docs`;
+}
+
+export function getAuthToken(): string {
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem("fraudai_jwt_token");
+    if (stored) return stored;
+  }
+  return "dev-token";
+}
+
+export async function loginUser(
+  username = "qa_analyst",
+  password = "password123",
+): Promise<string> {
+  const formData = new URLSearchParams();
+  formData.append("username", username);
+  formData.append("password", password);
+
+  const res = await fetch(`${API_BASE}/auth/token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: formData.toString(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "Login failed");
+    throw new Error(`Login failed (${res.status}): ${text}`);
+  }
+
+  const data = (await res.json()) as { access_token: string };
+  if (typeof window !== "undefined" && data.access_token) {
+    localStorage.setItem("fraudai_jwt_token", data.access_token);
+    localStorage.setItem("fraudai_username", username);
+  }
+  return data.access_token;
+}
 
 class ApiError extends Error {
   constructor(
@@ -29,11 +72,12 @@ async function request<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const url = `${API_BASE}${path}`;
+  const token = getAuthToken();
 
   const res = await fetch(url, {
     headers: {
       "Content-Type": "application/json",
-      Authorization: "Bearer dev-token",
+      Authorization: `Bearer ${token}`,
       ...options.headers,
     },
     ...options,
@@ -51,6 +95,7 @@ async function request<T>(
 
   return res.json() as Promise<T>;
 }
+
 
 // ---------------------------------------------------------------------------
 // Chat

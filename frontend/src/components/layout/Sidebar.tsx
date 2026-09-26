@@ -4,6 +4,8 @@ import { useState } from "react";
 import type { AgentName, HealthResponse } from "@/lib/types";
 import { AGENTS } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
+import { getApiDocsUrl } from "@/lib/api";
+
 
 interface StoredSession {
   id: string;
@@ -190,9 +192,19 @@ export function Sidebar({
         )}
       </div>
 
-      {/* Health status */}
-      <div className="border-t border-zinc-800 px-4 py-3">
-        <div className="flex items-center gap-2 text-xs">
+      {/* Health status & Links */}
+      <div className="border-t border-zinc-800 px-4 py-3 space-y-2">
+        <a
+          href={getApiDocsUrl()}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-between rounded-lg bg-zinc-900 border border-zinc-800 px-2.5 py-1.5 text-xs text-brand-400 hover:bg-zinc-800 transition-colors"
+        >
+          <span className="flex items-center gap-1.5 font-medium">📖 Live Swagger API Docs</span>
+          <span className="text-[10px] text-zinc-500">↗</span>
+        </a>
+
+        <div className="flex items-center gap-2 text-xs pt-1">
           <div
             className={`h-2 w-2 rounded-full ${
               health?.status === "healthy"
@@ -202,7 +214,7 @@ export function Sidebar({
                   : "bg-red-500"
             }`}
           />
-          <span className="text-zinc-500">
+          <span className="text-zinc-400 font-medium">
             {health?.status === "healthy"
               ? "All systems operational"
               : health?.status === "degraded"
@@ -211,7 +223,7 @@ export function Sidebar({
           </span>
         </div>
         {health?.corpus_version && (
-          <p className="mt-1 text-[10px] text-zinc-600">
+          <p className="text-[10px] text-zinc-600">
             Corpus: {health.corpus_version}
           </p>
         )}
@@ -219,3 +231,4 @@ export function Sidebar({
     </aside>
   );
 }
+

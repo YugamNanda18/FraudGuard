@@ -20,7 +20,12 @@ export function ChatWindow() {
   return (
     <div className="flex h-full flex-col">
       {/* Message list (scrollable) */}
-      <MessageList messages={messages} onRate={rateFeedback} />
+      <MessageList
+        messages={messages}
+        onRate={rateFeedback}
+        onSendSuggestion={sendMessage}
+      />
+
 
       {/* Agent streaming indicator */}
       <AgentIndicator
