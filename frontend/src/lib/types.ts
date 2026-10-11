@@ -84,7 +84,7 @@ export interface FeedbackRequest {
 // --- Health ---
 
 export interface HealthResponse {
-  status: "healthy" | "degraded" | "unhealthy";
+  status: "healthy" | "degraded" | "unhealthy" | "waking_up";
   qdrant: boolean;
   ollama: boolean;
   claude_api: boolean;

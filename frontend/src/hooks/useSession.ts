@@ -50,30 +50,39 @@ export function useSession() {
   // Health check
   // -----------------------------------------------------------------------
 
+  const [failCount, setFailCount] = useState(0);
+
   const checkHealth = useCallback(async () => {
     setIsLoadingHealth(true);
     try {
       const result = await healthCheck();
       setHealth(result);
+      setFailCount(0);
     } catch {
-      setHealth({
-        status: "unhealthy",
-        qdrant: false,
-        ollama: false,
-        claude_api: false,
-        corpus_version: null,
+      setFailCount((prev) => {
+        const next = prev + 1;
+        // First few failures during initial load / cold start: show waking_up
+        setHealth({
+          status: next < 5 ? "waking_up" : "unhealthy",
+          qdrant: false,
+          ollama: false,
+          claude_api: false,
+          corpus_version: null,
+        });
+        return next;
       });
     } finally {
       setIsLoadingHealth(false);
     }
   }, []);
 
-  // Poll health every 30 seconds
+  // Poll health: fast polling (4s) during waking_up/unhealthy, regular (30s) when healthy
   useEffect(() => {
     checkHealth();
-    const interval = setInterval(checkHealth, 30_000);
+    const intervalMs = health?.status === "healthy" ? 30_000 : 4_000;
+    const interval = setInterval(checkHealth, intervalMs);
     return () => clearInterval(interval);
-  }, [checkHealth]);
+  }, [checkHealth, health?.status]);
 
   // -----------------------------------------------------------------------
   // Track session

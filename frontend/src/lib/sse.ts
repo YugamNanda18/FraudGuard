@@ -48,21 +48,31 @@ export function streamChat(
 
   const run = async () => {
     try {
+      let res: Response | null = null;
       const token = getAuthToken();
-      const res = await fetch(`${API_BASE}/chat/stream`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(chatRequest),
-        signal: controller.signal,
-      });
 
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          res = await fetch(`${API_BASE}/chat/stream`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(chatRequest),
+            signal: controller.signal,
+          });
+          if (res && res.ok) break;
+        } catch (err: unknown) {
+          if (err instanceof DOMException && err.name === "AbortError") return;
+          if (attempt === 3) throw err;
+          await new Promise((r) => setTimeout(r, attempt * 2000));
+        }
+      }
 
-      if (!res.ok) {
-        const text = await res.text().catch(() => "Stream request failed");
-        onError(`HTTP ${res.status}: ${text}`);
+      if (!res || !res.ok) {
+        const text = res ? await res.text().catch(() => "Stream request failed") : "Server unreachable";
+        onError(`HTTP ${res?.status ?? 503}: ${text}`);
         return;
       }
 

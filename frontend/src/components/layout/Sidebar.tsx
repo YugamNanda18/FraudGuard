@@ -60,9 +60,11 @@ export function Sidebar({
                 ? "bg-green-500"
                 : health?.status === "degraded"
                   ? "bg-yellow-500"
-                  : "bg-red-500"
+                  : health?.status === "waking_up"
+                    ? "bg-yellow-400 animate-pulse"
+                    : "bg-red-500"
             }`}
-            title={health?.status ?? "unknown"}
+            title={health?.status ?? "connecting"}
           />
         </div>
       </aside>
@@ -211,7 +213,9 @@ export function Sidebar({
                 ? "bg-green-500"
                 : health?.status === "degraded"
                   ? "bg-yellow-500"
-                  : "bg-red-500"
+                  : health?.status === "waking_up"
+                    ? "bg-yellow-400 animate-pulse"
+                    : "bg-red-500"
             }`}
           />
           <span className="text-zinc-400 font-medium">
@@ -219,7 +223,9 @@ export function Sidebar({
               ? "All systems operational"
               : health?.status === "degraded"
                 ? "Degraded performance"
-                : "System unavailable"}
+                : health?.status === "waking_up"
+                  ? "Waking up server (Render)..."
+                  : "System unavailable"}
           </span>
         </div>
         {health?.corpus_version && (

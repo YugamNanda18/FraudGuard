@@ -29,6 +29,11 @@ const STATUS_STYLES: Record<
     text: "text-red-400",
     label: "System unavailable",
   },
+  waking_up: {
+    dot: "bg-yellow-400 animate-pulse",
+    text: "text-yellow-400",
+    label: "Waking up server...",
+  },
 };
 
 export default function HealthIndicator() {

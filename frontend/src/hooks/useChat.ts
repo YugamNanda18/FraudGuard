@@ -95,8 +95,9 @@ export function useChat() {
           message: content,
           session_id: sessionId,
           agent_override: agentOverride ?? null,
-          language: "es",
+          language: "en",
         },
+
         // onToken — accumulate in ref, RAF flushes to state
         (token: string) => {
           streamBufferRef.current += token;
@@ -184,14 +185,15 @@ export function useChat() {
 
   const uploadFile = useCallback(
     async (file: File) => {
-      if (!sessionId) return;
+      const activeSid = sessionId || uid();
+      if (!sessionId) setSessionId(activeSid);
       try {
-        const result = await apiUploadFile(sessionId, file);
+        const result = await apiUploadFile(activeSid, file);
         // Append system-style message about the upload
         const msg: Message = {
           id: uid(),
           role: "assistant",
-          content: `File "${result.filename}" uploaded (${result.chunks_generated} chunks indexed).`,
+          content: `📄 File "${result.filename}" uploaded successfully (${result.chunks_generated} chunks indexed in Qdrant vector memory). Ask me to analyze or query this document!`,
           agent: "donna",
           timestamp: new Date(),
         };
@@ -208,6 +210,7 @@ export function useChat() {
     },
     [sessionId],
   );
+
 
   // -----------------------------------------------------------------------
   // HITL confirmation
