@@ -126,9 +126,13 @@ export async function uploadFile(
   formData.append("session_id", sessionId);
 
   const url = `${API_BASE}/files/upload`;
+  const token = getAuthToken();
 
   const res = await fetch(url, {
     method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
     body: formData,
     // Do NOT set Content-Type — browser sets multipart boundary automatically
   });

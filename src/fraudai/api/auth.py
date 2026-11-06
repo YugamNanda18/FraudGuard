@@ -20,7 +20,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)
 
 # JWT configuration — algorithm and expiration.
 # Secret is read from settings at call time to respect env overrides.
@@ -82,7 +82,7 @@ def create_token(
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    token: str | None = Depends(oauth2_scheme),
 ) -> User:
     """Validate JWT and return the authenticated user.
 
@@ -102,7 +102,7 @@ async def get_current_user(
     from fraudai.core.config import settings
 
     # Dev / MVP token bypass — accept the literal "dev-token" string
-    if token == "dev-token":
+    if not token or token == "dev-token":
         return _DEV_USER
 
 
