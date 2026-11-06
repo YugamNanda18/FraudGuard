@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 import httpx as httpx_client
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import Response, StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.types import Command
@@ -432,8 +432,9 @@ async def chat_stream(
 @router.post("/files/upload", response_model=FileUploadResponse)
 async def upload_file(
     file: UploadFile,
-    session_id: str,
     request: Request,
+    session_id: str | None = Query(default=None),
+    session_id_form: str | None = Form(default=None, alias="session_id"),
     user: User = Depends(get_current_user),
 ) -> FileUploadResponse:
     """Upload a document for session context.
@@ -444,6 +445,7 @@ async def upload_file(
     The file is indexed into an ephemeral Qdrant collection scoped to the
     session (T-RAG-04). Indexing target: < 30 s (SR-007).
     """
+    session_id = session_id or session_id_form or str(uuid.uuid4())
     store = _get_store(request)
     session_mgr = _get_session_manager(request)
 

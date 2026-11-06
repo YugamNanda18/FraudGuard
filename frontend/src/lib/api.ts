@@ -125,7 +125,7 @@ export async function uploadFile(
   formData.append("file", file);
   formData.append("session_id", sessionId);
 
-  const url = `${API_BASE}/files/upload`;
+  const url = `${API_BASE}/files/upload?session_id=${encodeURIComponent(sessionId)}`;
   const token = getAuthToken();
 
   const res = await fetch(url, {
